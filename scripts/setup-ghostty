@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+# Setup ghostty git submodule.
+#
+# Usage: ./scripts/setup-ghostty.sh [--update]
+#   --update: Update the ghostty submodule to latest main
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+VENDOR_DIR="${ROOT_DIR}/Vendor"
+GHOSTTY_DIR="${VENDOR_DIR}/ghostty"
+GHOSTTY_REPO="https://github.com/ghostty-org/ghostty"
+
+UPDATE_SUBMODULE=false
+if [ "${1:-}" = "--update" ]; then
+    UPDATE_SUBMODULE=true
+fi
+
+# Initialize or update submodule
+if [ ! -d "${GHOSTTY_DIR}/.git" ]; then
+    echo "Adding ghostty as git submodule..."
+    (cd "${ROOT_DIR}" && git submodule add "${GHOSTTY_REPO}" Vendor/ghostty)
+    (cd "${ROOT_DIR}" && git submodule update --init --recursive Vendor/ghostty)
+elif [ "$UPDATE_SUBMODULE" = true ]; then
+    echo "Updating ghostty submodule to latest..."
+    (cd "${GHOSTTY_DIR}" && git fetch origin && git checkout origin/main)
+else
+    echo "Initializing ghostty submodule..."
+    (cd "${ROOT_DIR}" && git submodule update --init --recursive Vendor/ghostty)
+fi
+
+REF="$(cd "${GHOSTTY_DIR}" && git rev-parse HEAD)"
+echo ""
+echo "Ghostty submodule ready @ ${REF}"
+echo "Location: ${GHOSTTY_DIR}"

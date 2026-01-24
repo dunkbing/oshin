@@ -1,0 +1,92 @@
+#!/bin/bash
+set -euo pipefail
+
+# Build libghostty as universal (arm64 + x86_64) static library.
+# Requires: ./scripts/setup-ghostty.sh to be run first.
+#
+# Usage: ./scripts/build-libghostty.sh
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+VENDOR_DIR="${ROOT_DIR}/Vendor"
+GHOSTTY_DIR="${VENDOR_DIR}/ghostty"
+LIBGHOSTTY_DIR="${VENDOR_DIR}/libghostty"
+
+# Check dependencies
+for cmd in git zig lipo; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Error: $cmd required (try 'brew install $cmd')" >&2
+        exit 1
+    fi
+done
+
+# Ensure submodule is set up
+if [ ! -d "${GHOSTTY_DIR}/.git" ]; then
+    echo "Ghostty submodule not found. Running setup-ghostty.sh..."
+    "${ROOT_DIR}/scripts/setup-ghostty.sh"
+fi
+
+# Get current commit
+REF="$(cd "${GHOSTTY_DIR}" && git rev-parse HEAD)"
+echo "Building libghostty @ ${REF}"
+
+# Create a working copy to apply patches (don't modify submodule directly)
+WORKDIR="$(mktemp -d)"
+trap 'rm -rf "${WORKDIR}"' EXIT
+
+echo "Creating working copy..."
+cp -R "${GHOSTTY_DIR}" "${WORKDIR}/ghostty"
+
+# Patch build.zig to install libs on macOS
+perl -0pi -e 's/if \(!config\.target\.result\.os\.tag\.isDarwin\(\)\) \{/if (true) {/' "${WORKDIR}/ghostty/build.zig"
+
+# Patch to link Metal frameworks
+perl -0pi -e 's/lib\.linkFramework\("IOSurface"\);/lib.linkFramework("IOSurface");\n    lib.linkFramework("Metal");\n    lib.linkFramework("MetalKit");/g' "${WORKDIR}/ghostty/pkg/macos/build.zig"
+perl -0pi -e 's/module\.linkFramework\("IOSurface", \.\{\}\);/module.linkFramework("IOSurface", .{});\n        module.linkFramework("Metal", .{});\n        module.linkFramework("MetalKit", .{});/g' "${WORKDIR}/ghostty/pkg/macos/build.zig"
+
+# Patch bundle ID to use AgentMonitor's instead of Ghostty's
+# This prevents loading user's Ghostty config from ~/Library/Application Support/com.mitchellh.ghostty/
+sed -i '' 's/com\.mitchellh\.ghostty/app.agentmonitor/g' "${WORKDIR}/ghostty/src/build_config.zig"
+
+ZIG_FLAGS=(
+    -Dapp-runtime=none
+    -Demit-xcframework=false
+    -Demit-macos-app=false
+    -Demit-exe=false
+    -Demit-docs=false
+    -Demit-webdata=false
+    -Demit-helpgen=false
+    -Demit-terminfo=true
+    -Demit-termcap=false
+    -Demit-themes=false
+    -Doptimize=ReleaseFast
+    -Dstrip
+)
+
+build_arch() {
+    local arch="$1"
+    local outdir="${WORKDIR}/zig-out-${arch}"
+    echo "Building for ${arch}..." >&2
+    (cd "${WORKDIR}/ghostty" && zig build "${ZIG_FLAGS[@]}" -Dtarget="${arch}-macos" -p "${outdir}")
+    if [ ! -f "${outdir}/lib/libghostty.a" ]; then
+        echo "Error: build failed - ${outdir}/lib/libghostty.a not found" >&2
+        exit 1
+    fi
+    echo "${outdir}/lib/libghostty.a"
+}
+
+ARM64_LIB="$(build_arch aarch64)"
+X64_LIB="$(build_arch x86_64)"
+
+# Create universal binary
+echo "Creating universal binary..."
+mkdir -p "${LIBGHOSTTY_DIR}/lib"
+lipo -create "${ARM64_LIB}" "${X64_LIB}" -output "${LIBGHOSTTY_DIR}/lib/libghostty.a"
+
+# Record version
+printf "%s\n" "${REF}" > "${LIBGHOSTTY_DIR}/VERSION"
+
+echo ""
+echo "Done: $(lipo -info "${LIBGHOSTTY_DIR}/lib/libghostty.a")"
+echo ""
+echo "Headers: ${GHOSTTY_DIR}/include"
+echo "Library: ${LIBGHOSTTY_DIR}/lib/libghostty.a"

@@ -107,6 +107,7 @@ struct ContentView: View {
 struct RepositoryDetailView: View {
     let repository: Repository
     @StateObject private var gitService = GitService()
+    @StateObject private var ghosttyApp = Ghostty.App()
     @State private var selectedFile: String?
     @State private var selectedTab: DetailTab = .git
     @AppStorage("diffFontSize") private var diffFontSize: Double = 12
@@ -121,7 +122,7 @@ struct RepositoryDetailView: View {
             case .chat:
                 ChatTabView(repositoryPath: repository.path)
             case .terminal:
-                TerminalTabView()
+                TerminalTabView(workingDirectory: repository.path, ghosttyApp: ghosttyApp)
             case .git:
                 GitTabView(
                     repository: repository,
@@ -142,16 +143,125 @@ struct RepositoryDetailView: View {
     }
 }
 
-// MARK: - Terminal Tab (Placeholder)
+// MARK: - Terminal Tab
 
 struct TerminalTabView: View {
+    let workingDirectory: String
+    @ObservedObject var ghosttyApp: Ghostty.App
+
+    private let sessionManager = TerminalSessionManager.shared
+
+    @State private var shouldFocus: Bool = false
+    @State private var focusVersion: Int = 0
+    @State private var terminalTitle: String = "Terminal"
+    @State private var processExited: Bool = false
+    @State private var isResizing: Bool = false
+    @State private var terminalSize: (columns: UInt16, rows: UInt16) = (0, 0)
+    @State private var hideWorkItem: DispatchWorkItem?
+
     var body: some View {
-        ContentUnavailableView(
-            "Terminal",
-            systemImage: "terminal",
-            description: Text("Terminal integration coming soon.")
-        )
+        GeometryReader { geo in
+            ZStack {
+                TerminalViewWrapper(
+                    workingDirectory: workingDirectory,
+                    ghosttyApp: ghosttyApp,
+                    sessionManager: sessionManager,
+                    onProcessExit: {
+                        processExited = true
+                    },
+                    onTitleChange: { title in
+                        terminalTitle = title
+                    },
+                    shouldFocus: shouldFocus,
+                    isFocused: true,
+                    focusVersion: focusVersion,
+                    size: geo.size
+                )
+
+                // Resize overlay
+                if isResizing {
+                    ResizeOverlay(columns: terminalSize.columns, rows: terminalSize.rows)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                        .animation(.easeOut(duration: 0.1), value: isResizing)
+                }
+
+                // Process exited overlay
+                if processExited {
+                    VStack(spacing: 16) {
+                        Image(systemName: "terminal")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+
+                        Text("Terminal session ended")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+
+                        Button("Restart Terminal") {
+                            restartTerminal()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.ultraThinMaterial)
+                }
+            }
+            .onChange(of: geo.size) { _, _ in
+                handleSizeChange()
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            // Focus terminal on appear
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                shouldFocus = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    shouldFocus = false
+                }
+            }
+        }
+        .onDisappear {
+            hideWorkItem?.cancel()
+            hideWorkItem = nil
+        }
+    }
+
+    private func handleSizeChange() {
+        guard let terminal = sessionManager.getTerminal(for: workingDirectory),
+              let termSize = terminal.terminalSize() else { return }
+
+        terminalSize = (termSize.columns, termSize.rows)
+        isResizing = true
+
+        hideWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            isResizing = false
+        }
+        hideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+    }
+
+    private func restartTerminal() {
+        sessionManager.removeTerminal(for: workingDirectory)
+        processExited = false
+        focusVersion += 1
+    }
+}
+
+// MARK: - Resize Overlay
+
+struct ResizeOverlay: View {
+    let columns: UInt16
+    let rows: UInt16
+
+    var body: some View {
+        Text("\(columns) × \(rows)")
+            .font(.system(size: 24, weight: .medium, design: .monospaced))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

@@ -6,3 +6,6 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# libghostty build artifacts (run scripts/build-libghostty.sh to rebuild)
+/Vendor/libghostty/
