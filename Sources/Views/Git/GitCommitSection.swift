@@ -8,11 +8,8 @@
 import SwiftUI
 
 struct GitCommitSection: View {
-    let gitStatus: GitStatus
-    let isOperationPending: Bool
+    @EnvironmentObject private var gitService: GitService
     @Binding var commitMessage: String
-    let onCommit: (String) -> Void
-    let onStageAll: (@escaping @Sendable () -> Void) -> Void
 
     var body: some View {
         VStack(spacing: 8) {
@@ -49,57 +46,62 @@ struct GitCommitSection: View {
         HStack(spacing: 0) {
             // Main commit button
             Button {
-                onCommit(commitMessage)
+                gitService.commit(message: commitMessage)
                 commitMessage = ""
             } label: {
                 Text("Commit")
                     .font(.system(size: 12, weight: .medium))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 32)
+                    .frame(height: 28)
             }
             .buttonStyle(.plain)
-            .background(commitButtonEnabled ? Color.accentColor : Color.gray.opacity(0.3))
-            .foregroundColor(commitButtonEnabled ? .white : .gray)
+            .foregroundColor(commitButtonEnabled ? .white : .secondary)
             .disabled(!commitButtonEnabled)
 
             // Divider
             Rectangle()
-                .fill(Color(nsColor: .separatorColor))
-                .frame(width: 1, height: 32)
+                .fill(Color.white.opacity(0.2))
+                .frame(width: 1, height: 16)
 
             // Dropdown menu
             Menu {
                 Button("Commit All") {
                     commitAllAction()
                 }
-                .disabled(commitMessage.isEmpty || isOperationPending)
+                .disabled(commitMessage.isEmpty || gitService.isOperationPending)
+
+                Divider()
+
+                Button("Amend Last Commit") {
+                    gitService.amendCommit(message: commitMessage.isEmpty ? nil : commitMessage)
+                    commitMessage = ""
+                }
+                .disabled(gitService.isOperationPending)
             } label: {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8))
-                    .foregroundColor(commitButtonEnabled ? .white : .gray)
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(commitButtonEnabled ? .white : .secondary)
             }
             .menuStyle(.borderlessButton)
-            .frame(width: 32)
             .menuIndicator(.hidden)
-            .background(commitButtonEnabled ? Color.accentColor : Color.gray.opacity(0.3))
+            .frame(width: 32, height: 28)
+            .fixedSize()
             .disabled(!commitButtonEnabled && commitMessage.isEmpty)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .cornerRadius(6)
+        .frame(height: 28)
+        .background(commitButtonEnabled ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private var commitButtonEnabled: Bool {
-        !commitMessage.isEmpty && !gitStatus.stagedFiles.isEmpty && !isOperationPending
+        !commitMessage.isEmpty && !gitService.currentStatus.stagedFiles.isEmpty && !gitService.isOperationPending
     }
 
     private func commitAllAction() {
         let message = commitMessage
-        let commit = onCommit
-
-        onStageAll { @Sendable in
+        gitService.stageAll { @Sendable [weak gitService] in
             Task { @MainActor in
-                commit(message)
+                gitService?.commit(message: message)
             }
         }
         commitMessage = ""

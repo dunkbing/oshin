@@ -7,10 +7,10 @@
 
 import Foundation
 
-struct GitStatus: Equatable, Identifiable {
-    let id = UUID()
+struct GitStatus: Equatable {
     let stagedFiles: [String]
     let modifiedFiles: [String]
+    let deletedFiles: [String]
     let untrackedFiles: [String]
     let conflictedFiles: [String]
     let currentBranch: String
@@ -24,12 +24,13 @@ struct GitStatus: Equatable, Identifiable {
     }
 
     var totalChanges: Int {
-        stagedFiles.count + modifiedFiles.count + untrackedFiles.count
+        stagedFiles.count + modifiedFiles.count + deletedFiles.count + untrackedFiles.count
     }
 
     static let empty = GitStatus(
         stagedFiles: [],
         modifiedFiles: [],
+        deletedFiles: [],
         untrackedFiles: [],
         conflictedFiles: [],
         currentBranch: "",
@@ -39,11 +40,24 @@ struct GitStatus: Equatable, Identifiable {
         deletions: 0
     )
 
-    // Custom equality that ignores id (for semantic equality)
-    static func == (lhs: GitStatus, rhs: GitStatus) -> Bool {
-        lhs.stagedFiles == rhs.stagedFiles && lhs.modifiedFiles == rhs.modifiedFiles
-            && lhs.untrackedFiles == rhs.untrackedFiles && lhs.conflictedFiles == rhs.conflictedFiles
-            && lhs.currentBranch == rhs.currentBranch && lhs.aheadCount == rhs.aheadCount
-            && lhs.behindCount == rhs.behindCount && lhs.additions == rhs.additions && lhs.deletions == rhs.deletions
+    /// Create a copy with updated file arrays (for optimistic updates)
+    func with(
+        stagedFiles: [String]? = nil,
+        modifiedFiles: [String]? = nil,
+        deletedFiles: [String]? = nil,
+        untrackedFiles: [String]? = nil
+    ) -> GitStatus {
+        GitStatus(
+            stagedFiles: stagedFiles ?? self.stagedFiles,
+            modifiedFiles: modifiedFiles ?? self.modifiedFiles,
+            deletedFiles: deletedFiles ?? self.deletedFiles,
+            untrackedFiles: untrackedFiles ?? self.untrackedFiles,
+            conflictedFiles: self.conflictedFiles,
+            currentBranch: self.currentBranch,
+            aheadCount: self.aheadCount,
+            behindCount: self.behindCount,
+            additions: self.additions,
+            deletions: self.deletions
+        )
     }
 }

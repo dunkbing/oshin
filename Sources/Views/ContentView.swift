@@ -10,9 +10,17 @@ enum DetailTab: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .chat: return "bubble.left"
-        case .terminal: return "terminal"
+        case .chat: return "bubble.left.fill"
+        case .terminal: return "terminal.fill"
         case .git: return "arrow.triangle.branch"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .chat: return "Chat"
+        case .terminal: return "Terminal"
+        case .git: return "Git"
         }
     }
 }
@@ -23,26 +31,31 @@ struct DetailTabBar: View {
     @Binding var selectedTab: DetailTab
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(DetailTab.allCases, id: \.self) { tab in
                 Button {
                     selectedTab = tab
                 } label: {
-                    Image(systemName: tab.icon)
-                        .font(.system(size: 16))
-                        .frame(width: 44, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(selectedTab == tab ? Color.primary.opacity(0.1) : Color.clear)
-                        )
-                        .foregroundStyle(selectedTab == tab ? .primary : .tertiary)
+                    HStack(spacing: 5) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 11))
+                        Text(tab.label)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(selectedTab == tab ? Color.primary.opacity(0.12) : Color.clear)
+                    )
+                    .foregroundStyle(selectedTab == tab ? .primary : .secondary)
                 }
                 .buttonStyle(.plain)
             }
             Spacer()
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 
@@ -89,6 +102,8 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Repository Detail View
+
 struct RepositoryDetailView: View {
     let repository: Repository
     @StateObject private var gitService = GitService()
@@ -112,13 +127,13 @@ struct RepositoryDetailView: View {
             case .git:
                 GitTabView(
                     repository: repository,
-                    gitService: gitService,
                     selectedFile: $selectedFile,
                     diffFontSize: diffFontSize
                 )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environmentObject(gitService)
         .onAppear {
             gitService.setRepositoryPath(repository.path)
         }
@@ -145,57 +160,18 @@ struct TerminalTabView: View {
 // MARK: - Git Tab
 
 struct GitTabView: View {
+    @EnvironmentObject private var gitService: GitService
+
     let repository: Repository
-    @ObservedObject var gitService: GitService
     @Binding var selectedFile: String?
     let diffFontSize: Double
+
+    private var gitStatus: GitStatus { gitService.currentStatus }
 
     var body: some View {
         VStack(spacing: 0) {
             // Header with git status
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(repository.name)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    HStack(spacing: 8) {
-                        if !gitService.currentStatus.currentBranch.isEmpty {
-                            Label(gitService.currentStatus.currentBranch, systemImage: "arrow.triangle.branch")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Text(repository.path)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer()
-
-                // Git status badge
-                if gitService.currentStatus.hasChanges {
-                    GitStatusView(
-                        additions: gitService.currentStatus.additions,
-                        deletions: gitService.currentStatus.deletions,
-                        untrackedFiles: gitService.currentStatus.untrackedFiles.count
-                    )
-                }
-
-                // Refresh button
-                Button {
-                    Task {
-                        await gitService.reloadStatus()
-                    }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .disabled(gitService.isLoading)
-            }
-            .padding()
+            GitTabHeader(repository: repository)
 
             Divider()
 
@@ -203,28 +179,11 @@ struct GitTabView: View {
             if gitService.isLoading {
                 ProgressView("Loading git status...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if gitService.currentStatus.hasChanges {
+            } else if gitStatus.hasChanges {
                 HSplitView {
                     // Left: File list and commit section
                     GitSidebarView(
-                        gitStatus: gitService.currentStatus,
-                        isOperationPending: gitService.isOperationPending,
                         selectedFile: selectedFile,
-                        onStageFile: { file in
-                            gitService.stageFile(file)
-                        },
-                        onUnstageFile: { file in
-                            gitService.unstageFile(file)
-                        },
-                        onStageAll: { completion in
-                            gitService.stageAll(completion: completion)
-                        },
-                        onUnstageAll: {
-                            gitService.unstageAll()
-                        },
-                        onCommit: { message in
-                            gitService.commit(message: message)
-                        },
                         onFileClick: { file in
                             selectedFile = file
                             Task {
@@ -255,85 +214,58 @@ struct GitTabView: View {
     }
 }
 
-struct GitChangesListView: View {
-    let status: GitStatus
+// MARK: - Git Tab Header
+
+struct GitTabHeader: View {
+    @EnvironmentObject private var gitService: GitService
+
+    let repository: Repository
+
+    private var gitStatus: GitStatus { gitService.currentStatus }
 
     var body: some View {
-        List {
-            if !status.stagedFiles.isEmpty {
-                Section("Staged Changes (\(status.stagedFiles.count))") {
-                    ForEach(status.stagedFiles, id: \.self) { file in
-                        FileChangeRow(file: file, type: .staged)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(repository.name)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                HStack(spacing: 8) {
+                    if !gitStatus.currentBranch.isEmpty {
+                        Label(gitStatus.currentBranch, systemImage: "arrow.triangle.branch")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+
+                    Text(repository.path)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
             }
-
-            if !status.modifiedFiles.isEmpty {
-                Section("Modified (\(status.modifiedFiles.count))") {
-                    ForEach(status.modifiedFiles, id: \.self) { file in
-                        FileChangeRow(file: file, type: .modified)
-                    }
-                }
-            }
-
-            if !status.untrackedFiles.isEmpty {
-                Section("Untracked (\(status.untrackedFiles.count))") {
-                    ForEach(status.untrackedFiles, id: \.self) { file in
-                        FileChangeRow(file: file, type: .untracked)
-                    }
-                }
-            }
-
-            if !status.conflictedFiles.isEmpty {
-                Section("Conflicts (\(status.conflictedFiles.count))") {
-                    ForEach(status.conflictedFiles, id: \.self) { file in
-                        FileChangeRow(file: file, type: .conflicted)
-                    }
-                }
-            }
-        }
-        .listStyle(.sidebar)
-    }
-}
-
-struct FileChangeRow: View {
-    let file: String
-    let type: FileChangeType
-
-    enum FileChangeType {
-        case staged, modified, untracked, conflicted
-
-        var color: Color {
-            switch self {
-            case .staged: return .green
-            case .modified: return .orange
-            case .untracked: return .blue
-            case .conflicted: return .red
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .staged: return "checkmark.circle.fill"
-            case .modified: return "pencil.circle.fill"
-            case .untracked: return "plus.circle.fill"
-            case .conflicted: return "exclamationmark.triangle.fill"
-            }
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: type.icon)
-                .foregroundStyle(type.color)
-                .font(.system(size: 12))
-
-            Text(file)
-                .font(.system(size: 12, design: .monospaced))
-                .lineLimit(1)
 
             Spacer()
+
+            // Git status badge
+            if gitStatus.hasChanges {
+                GitStatusView(
+                    additions: gitStatus.additions,
+                    deletions: gitStatus.deletions,
+                    untrackedFiles: gitStatus.untrackedFiles.count
+                )
+            }
+
+            // Refresh button
+            Button {
+                Task {
+                    await gitService.reloadStatus()
+                }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .disabled(gitService.isLoading)
         }
-        .padding(.vertical, 2)
+        .padding()
     }
 }

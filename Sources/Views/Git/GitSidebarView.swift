@@ -8,39 +8,23 @@
 import SwiftUI
 
 struct GitSidebarView: View {
-    let gitStatus: GitStatus
-    let isOperationPending: Bool
-    let selectedFile: String?
+    @EnvironmentObject private var gitService: GitService
 
-    var onStageFile: (String) -> Void
-    var onUnstageFile: (String) -> Void
-    var onStageAll: (@escaping @Sendable () -> Void) -> Void
-    var onUnstageAll: () -> Void
-    var onCommit: (String) -> Void
-    var onFileClick: (String) -> Void
+    let selectedFile: String?
+    let onFileClick: (String) -> Void
 
     @State private var commitMessage: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            GitSidebarHeader(
-                gitStatus: gitStatus,
-                isOperationPending: isOperationPending,
-                hasUnstagedChanges: hasUnstagedChanges,
-                onStageAll: onStageAll,
-                onUnstageAll: onUnstageAll
-            )
+            GitSidebarHeader()
 
             Divider()
 
             // File list (expands to fill available space)
             GitFileListView(
-                gitStatus: gitStatus,
-                isOperationPending: isOperationPending,
                 selectedFile: selectedFile,
-                onStageFile: onStageFile,
-                onUnstageFile: onUnstageFile,
                 onFileClick: onFileClick
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -49,31 +33,24 @@ struct GitSidebarView: View {
             Divider()
 
             // Commit section (fixed at bottom)
-            GitCommitSection(
-                gitStatus: gitStatus,
-                isOperationPending: isOperationPending,
-                commitMessage: $commitMessage,
-                onCommit: onCommit,
-                onStageAll: onStageAll
-            )
-            .padding(12)
+            GitCommitSection(commitMessage: $commitMessage)
+                .padding(12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var hasUnstagedChanges: Bool {
-        !gitStatus.modifiedFiles.isEmpty || !gitStatus.untrackedFiles.isEmpty
+        .transaction { $0.animation = nil }
     }
 }
 
 // MARK: - Header
 
 struct GitSidebarHeader: View {
-    let gitStatus: GitStatus
-    let isOperationPending: Bool
-    let hasUnstagedChanges: Bool
-    let onStageAll: (@escaping @Sendable () -> Void) -> Void
-    let onUnstageAll: () -> Void
+    @EnvironmentObject private var gitService: GitService
+
+    private var gitStatus: GitStatus { gitService.currentStatus }
+
+    private var hasUnstagedChanges: Bool {
+        !gitStatus.modifiedFiles.isEmpty || !gitStatus.untrackedFiles.isEmpty || !gitStatus.deletedFiles.isEmpty
+    }
 
     var body: some View {
         HStack {
@@ -84,16 +61,16 @@ struct GitSidebarHeader: View {
 
             if hasUnstagedChanges {
                 Button("Stage All") {
-                    onStageAll {}
+                    gitService.stageAll {}
                 }
                 .buttonStyle(.borderless)
                 .font(.system(size: 11))
-                .disabled(isOperationPending)
+                .disabled(gitService.isOperationPending)
             }
 
             Menu {
                 Button("Unstage All") {
-                    onUnstageAll()
+                    gitService.unstageAll()
                 }
                 .disabled(gitStatus.stagedFiles.isEmpty)
             } label: {
@@ -102,7 +79,7 @@ struct GitSidebarHeader: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 20)
-            .disabled(isOperationPending)
+            .disabled(gitService.isOperationPending)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

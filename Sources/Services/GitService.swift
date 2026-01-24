@@ -49,31 +49,64 @@ class GitService: ObservableObject {
     // MARK: - Staging
 
     func stageFile(_ file: String) {
-        guard !isOperationPending else { return }
-        isOperationPending = true
-
         let path = repositoryPath
+        let isDeleted = currentStatus.deletedFiles.contains(file)
+
+        // Optimistic update - modify arrays in place conceptually
+        var newStaged = currentStatus.stagedFiles
+        var newModified = currentStatus.modifiedFiles
+        var newDeleted = currentStatus.deletedFiles
+        var newUntracked = currentStatus.untrackedFiles
+
+        if !newStaged.contains(file) {
+            newStaged.append(file)
+        }
+        newModified.removeAll { $0 == file }
+        newDeleted.removeAll { $0 == file }
+        newUntracked.removeAll { $0 == file }
+
+        // Single update to trigger one view refresh
+        currentStatus = currentStatus.with(
+            stagedFiles: newStaged,
+            modifiedFiles: newModified,
+            deletedFiles: newDeleted,
+            untrackedFiles: newUntracked
+        )
+
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
-                try repository.add(path: file)
+                if isDeleted {
+                    try GitService.runGitCommand(["add", "--", file], in: path)
+                } else {
+                    let url = URL(fileURLWithPath: path)
+                    let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                    try repository.add(path: file)
+                }
             } catch {
                 print("Failed to stage file: \(error)")
+                await self?.reloadStatus()
             }
-
-            await MainActor.run { [weak self] in
-                self?.isOperationPending = false
-            }
-            await self?.reloadStatus()
         }
     }
 
     func unstageFile(_ file: String) {
-        guard !isOperationPending else { return }
-        isOperationPending = true
-
         let path = repositoryPath
+
+        // Optimistic update - move file from staged back to appropriate category
+        var newStaged = currentStatus.stagedFiles
+        var newModified = currentStatus.modifiedFiles
+
+        newStaged.removeAll { $0 == file }
+        if !newModified.contains(file) {
+            newModified.append(file)
+        }
+
+        // Single update to trigger one view refresh
+        currentStatus = currentStatus.with(
+            stagedFiles: newStaged,
+            modifiedFiles: newModified
+        )
+
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
                 let url = URL(fileURLWithPath: path)
@@ -81,12 +114,8 @@ class GitService: ObservableObject {
                 try repository.restore(.staged, paths: [file])
             } catch {
                 print("Failed to unstage file: \(error)")
+                await self?.reloadStatus()
             }
-
-            await MainActor.run { [weak self] in
-                self?.isOperationPending = false
-            }
-            await self?.reloadStatus()
         }
     }
 
@@ -95,14 +124,19 @@ class GitService: ObservableObject {
         isOperationPending = true
 
         let path = repositoryPath
-        let allFiles = currentStatus.modifiedFiles + currentStatus.untrackedFiles
+        let filesToAdd = currentStatus.modifiedFiles + currentStatus.untrackedFiles
+        let filesToRemove = currentStatus.deletedFiles
         Task { [weak self] in
             await Task.detached(priority: .userInitiated) {
                 do {
                     let url = URL(fileURLWithPath: path)
                     let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
-                    if !allFiles.isEmpty {
-                        try repository.add(paths: allFiles)
+                    if !filesToAdd.isEmpty {
+                        try repository.add(paths: filesToAdd)
+                    }
+                    // Use git command for deleted files
+                    for file in filesToRemove {
+                        try GitService.runGitCommand(["add", "--", file], in: path)
                     }
                 } catch {
                     print("Failed to stage all: \(error)")
@@ -153,6 +187,31 @@ class GitService: ObservableObject {
                 try repository.commit(message: message)
             } catch {
                 print("Failed to commit: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+        }
+    }
+
+    func amendCommit(message: String?) {
+        guard !isOperationPending else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                var args = ["commit", "--amend"]
+                if let message = message {
+                    args += ["-m", message]
+                } else {
+                    args += ["--no-edit"]
+                }
+                try GitService.runGitCommand(args, in: path)
+            } catch {
+                print("Failed to amend commit: \(error)")
             }
 
             await MainActor.run { [weak self] in
@@ -222,6 +281,7 @@ class GitService: ObservableObject {
             // Categorize files
             var stagedFiles: [String] = []
             var modifiedFiles: [String] = []
+            var deletedFiles: [String] = []
             var untrackedFiles: [String] = []
             var conflictedFiles: [String] = []
 
@@ -234,7 +294,11 @@ class GitService: ObservableObject {
                         if !stagedFiles.contains(filePath) {
                             stagedFiles.append(filePath)
                         }
-                    case .workingTreeModified, .workingTreeDeleted, .workingTreeRenamed, .workingTreeTypeChange:
+                    case .workingTreeDeleted:
+                        if !deletedFiles.contains(filePath) {
+                            deletedFiles.append(filePath)
+                        }
+                    case .workingTreeModified, .workingTreeRenamed, .workingTreeTypeChange:
                         if !modifiedFiles.contains(filePath) {
                             modifiedFiles.append(filePath)
                         }
@@ -282,6 +346,7 @@ class GitService: ObservableObject {
             return GitStatus(
                 stagedFiles: stagedFiles,
                 modifiedFiles: modifiedFiles,
+                deletedFiles: deletedFiles,
                 untrackedFiles: untrackedFiles,
                 conflictedFiles: conflictedFiles,
                 currentBranch: currentBranch,
@@ -291,5 +356,29 @@ class GitService: ObservableObject {
                 deletions: deletions
             )
         }.value
+    }
+
+    // MARK: - Git Shell Commands
+
+    private nonisolated static func runGitCommand(_ arguments: [String], in directory: String) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = arguments
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        if process.terminationStatus != 0 {
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "GitService", code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: output])
+        }
     }
 }
