@@ -106,7 +106,7 @@ struct RepositoryDetailView: View {
             // Tab content
             switch selectedTab {
             case .chat:
-                ChatTabView()
+                ChatTabView(repositoryPath: repository.path)
             case .terminal:
                 TerminalTabView()
             case .git:
@@ -126,19 +126,6 @@ struct RepositoryDetailView: View {
             gitService.setRepositoryPath(newPath)
             selectedFile = nil
         }
-    }
-}
-
-// MARK: - Chat Tab (Placeholder)
-
-struct ChatTabView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Chat",
-            systemImage: "bubble.left",
-            description: Text("Agent chat interface coming soon.")
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
