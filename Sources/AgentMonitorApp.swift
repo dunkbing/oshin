@@ -54,7 +54,7 @@ struct AgentMonitorApp: App {
         }
         .modelContainer(sharedModelContainer)
         .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unifiedCompact)
         .defaultSize(width: 1000, height: 700)
     }
 }

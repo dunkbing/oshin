@@ -1,6 +1,53 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - Detail Tab
+
+enum DetailTab: String, CaseIterable {
+    case chat
+    case terminal
+    case git
+
+    var icon: String {
+        switch self {
+        case .chat: return "bubble.left"
+        case .terminal: return "terminal"
+        case .git: return "arrow.triangle.branch"
+        }
+    }
+}
+
+// MARK: - Tab Bar
+
+struct DetailTabBar: View {
+    @Binding var selectedTab: DetailTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(DetailTab.allCases, id: \.self) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 16))
+                        .frame(width: 44, height: 32)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(selectedTab == tab ? Color.primary.opacity(0.1) : Color.clear)
+                        )
+                        .foregroundStyle(selectedTab == tab ? .primary : .tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Content View
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workspace.order) private var workspaces: [Workspace]
@@ -16,15 +63,18 @@ struct ContentView: View {
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
-            if let repository = selectedRepository {
-                RepositoryDetailView(repository: repository)
-            } else {
-                ContentUnavailableView(
-                    "No Repository Selected",
-                    systemImage: "folder",
-                    description: Text("Select a repository from the sidebar or add a new one.")
-                )
+            Group {
+                if let repository = selectedRepository {
+                    RepositoryDetailView(repository: repository)
+                } else {
+                    ContentUnavailableView(
+                        "No Repository Selected",
+                        systemImage: "folder",
+                        description: Text("Select a repository from the sidebar or add a new one.")
+                    )
+                }
             }
+            .ignoresSafeArea(.container, edges: .top)
         }
         .onAppear {
             if selectedWorkspace == nil {
@@ -43,7 +93,75 @@ struct RepositoryDetailView: View {
     let repository: Repository
     @StateObject private var gitService = GitService()
     @State private var selectedFile: String?
+    @State private var selectedTab: DetailTab = .git
     @AppStorage("diffFontSize") private var diffFontSize: Double = 12
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab bar
+            DetailTabBar(selectedTab: $selectedTab)
+
+            Divider()
+
+            // Tab content
+            switch selectedTab {
+            case .chat:
+                ChatTabView()
+            case .terminal:
+                TerminalTabView()
+            case .git:
+                GitTabView(
+                    repository: repository,
+                    gitService: gitService,
+                    selectedFile: $selectedFile,
+                    diffFontSize: diffFontSize
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            gitService.setRepositoryPath(repository.path)
+        }
+        .onChange(of: repository.path) { _, newPath in
+            gitService.setRepositoryPath(newPath)
+            selectedFile = nil
+        }
+    }
+}
+
+// MARK: - Chat Tab (Placeholder)
+
+struct ChatTabView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Chat",
+            systemImage: "bubble.left",
+            description: Text("Agent chat interface coming soon.")
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Terminal Tab (Placeholder)
+
+struct TerminalTabView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Terminal",
+            systemImage: "terminal",
+            description: Text("Terminal integration coming soon.")
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Git Tab
+
+struct GitTabView: View {
+    let repository: Repository
+    @ObservedObject var gitService: GitService
+    @Binding var selectedFile: String?
+    let diffFontSize: Double
 
     var body: some View {
         VStack(spacing: 0) {
@@ -147,13 +265,6 @@ struct RepositoryDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            gitService.setRepositoryPath(repository.path)
-        }
-        .onChange(of: repository.path) { _, newPath in
-            gitService.setRepositoryPath(newPath)
-            selectedFile = nil
-        }
     }
 }
 

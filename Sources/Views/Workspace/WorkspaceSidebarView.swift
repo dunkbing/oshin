@@ -13,17 +13,10 @@ struct WorkspaceSidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Workspace Selector
             workspaceSelector
-
             Divider()
-
-            // Repository List
-            repositoryList
-
+            repositoryList.padding(.top, 5)
             Divider()
-
-            // Footer with Add Button
             footer
         }
     }
@@ -55,7 +48,7 @@ struct WorkspaceSidebarView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.bottom, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
