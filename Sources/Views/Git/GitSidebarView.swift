@@ -78,7 +78,8 @@ struct GitSidebarHeader: View {
                     .font(.system(size: 14))
             }
             .menuStyle(.borderlessButton)
-            .frame(width: 20)
+            .menuIndicator(.hidden)
+            .fixedSize()
             .disabled(gitService.isOperationPending)
         }
         .padding(.horizontal, 12)
