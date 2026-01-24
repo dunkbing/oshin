@@ -42,6 +42,8 @@ struct ContentView: View {
 struct RepositoryDetailView: View {
     let repository: Repository
     @StateObject private var gitService = GitService()
+    @State private var selectedFile: String?
+    @AppStorage("diffFontSize") private var diffFontSize: Double = 12
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,12 +94,50 @@ struct RepositoryDetailView: View {
 
             Divider()
 
-            // Main content area
+            // Main content area with split view
             if gitService.isLoading {
                 ProgressView("Loading git status...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if gitService.currentStatus.hasChanges {
-                GitChangesListView(status: gitService.currentStatus)
+                HSplitView {
+                    // Left: File list and commit section
+                    GitSidebarView(
+                        gitStatus: gitService.currentStatus,
+                        isOperationPending: gitService.isOperationPending,
+                        selectedFile: selectedFile,
+                        onStageFile: { file in
+                            gitService.stageFile(file)
+                        },
+                        onUnstageFile: { file in
+                            gitService.unstageFile(file)
+                        },
+                        onStageAll: { completion in
+                            gitService.stageAll(completion: completion)
+                        },
+                        onUnstageAll: {
+                            gitService.unstageAll()
+                        },
+                        onCommit: { message in
+                            gitService.commit(message: message)
+                        },
+                        onFileClick: { file in
+                            selectedFile = file
+                            Task {
+                                await gitService.loadFileDiff(for: file)
+                            }
+                        }
+                    )
+                    .frame(minWidth: 250, idealWidth: 280, maxWidth: 350)
+
+                    // Right: Diff view
+                    DiffView(
+                        diffOutput: gitService.selectedFileDiff,
+                        fileName: selectedFile ?? "",
+                        fontSize: diffFontSize
+                    )
+                    .frame(minWidth: 400)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ContentUnavailableView(
                     "No Changes",
@@ -112,6 +152,7 @@ struct RepositoryDetailView: View {
         }
         .onChange(of: repository.path) { _, newPath in
             gitService.setRepositoryPath(newPath)
+            selectedFile = nil
         }
     }
 }
