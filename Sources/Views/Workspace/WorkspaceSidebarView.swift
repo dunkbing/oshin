@@ -70,11 +70,10 @@ struct WorkspaceSidebarView: View {
             } else {
                 List(selection: $selectedRepository) {
                     ForEach(workspace.repositories) { repository in
-                        RepositoryRowView(repository: repository)
-                            .tag(repository)
-                    }
-                    .onDelete { indexSet in
-                        deleteRepositories(at: indexSet, from: workspace)
+                        RepositoryRowView(repository: repository) {
+                            deleteRepository(repository, from: workspace)
+                        }
+                        .tag(repository)
                     }
                 }
                 .listStyle(.sidebar)
@@ -109,19 +108,20 @@ struct WorkspaceSidebarView: View {
         }
     }
 
-    private func deleteRepositories(at offsets: IndexSet, from workspace: Workspace) {
-        for index in offsets {
-            let repository = workspace.repositories[index]
-            if selectedRepository == repository {
-                selectedRepository = nil
-            }
-            modelContext.delete(repository)
+    private func deleteRepository(_ repository: Repository, from workspace: Workspace) {
+        if selectedRepository == repository {
+            selectedRepository = nil
         }
+        modelContext.delete(repository)
     }
 }
 
 struct RepositoryRowView: View {
+    @Environment(\.modelContext) private var modelContext
+    @ObservedObject private var appDetector = AppDetector.shared
+
     let repository: Repository
+    var onDelete: (() -> Void)?
 
     var body: some View {
         HStack {
@@ -139,5 +139,90 @@ struct RepositoryRowView: View {
             }
         }
         .padding(.vertical, 2)
+        .contextMenu {
+            // Open in submenu
+            Menu {
+                // Terminals section
+                let terminals = appDetector.getTerminals()
+                if !terminals.isEmpty {
+                    Section("Terminals") {
+                        ForEach(terminals) { terminal in
+                            Button {
+                                appDetector.openPath(repository.path, with: terminal)
+                            } label: {
+                                AppMenuLabel(app: terminal)
+                            }
+                        }
+                    }
+                }
+
+                // Editors section
+                let editors = appDetector.getEditors()
+                if !editors.isEmpty {
+                    Section("Editors") {
+                        ForEach(editors) { editor in
+                            Button {
+                                appDetector.openPath(repository.path, with: editor)
+                            } label: {
+                                AppMenuLabel(app: editor)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Open in...", systemImage: "arrow.up.forward.app")
+            }
+
+            // Open in Finder
+            Button {
+                appDetector.openInFinder(repository.path)
+            } label: {
+                Label("Reveal in Finder", systemImage: "folder")
+            }
+
+            // Copy Path
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(repository.path, forType: .string)
+            } label: {
+                Label("Copy Path", systemImage: "doc.on.doc")
+            }
+
+            Divider()
+
+            // Remove Repository
+            Button(role: .destructive) {
+                onDelete?()
+            } label: {
+                Label("Remove Repository", systemImage: "trash")
+            }
+        }
+    }
+}
+
+struct AppMenuLabel: View {
+    let app: DetectedApp
+
+    private func resizedIcon(_ image: NSImage, size: CGSize) -> NSImage {
+        let newImage = NSImage(size: size)
+        newImage.lockFocus()
+        image.draw(
+            in: NSRect(origin: .zero, size: size),
+            from: NSRect(origin: .zero, size: image.size),
+            operation: .sourceOver,
+            fraction: 1.0
+        )
+        newImage.unlockFocus()
+        return newImage
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let icon = app.icon {
+                Image(nsImage: resizedIcon(icon, size: CGSize(width: 16, height: 16)))
+                    .renderingMode(.original)
+            }
+            Text(app.name)
+        }
     }
 }
