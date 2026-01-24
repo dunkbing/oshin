@@ -8,9 +8,15 @@ let package = Package(
     platforms: [
         .macOS(.v14)
     ],
+    dependencies: [
+        .package(url: "https://github.com/ibrahimcetin/SwiftGitX.git", from: "0.4.0"),
+    ],
     targets: [
         .executableTarget(
             name: "agentmonitor",
+            dependencies: [
+                .product(name: "SwiftGitX", package: "SwiftGitX"),
+            ],
             path: "Sources"
         ),
     ]
