@@ -113,9 +113,7 @@ struct RepositoryDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab bar
             DetailTabBar(selectedTab: $selectedTab)
-
             Divider()
 
             // Tab content
@@ -170,18 +168,15 @@ struct GitTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with git status
             GitTabHeader(repository: repository)
 
             Divider()
 
-            // Main content area with split view
             if gitService.isLoading {
                 ProgressView("Loading git status...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if gitStatus.hasChanges {
                 HSplitView {
-                    // Left: File list and commit section
                     GitSidebarView(
                         selectedFile: selectedFile,
                         onFileClick: { file in
@@ -193,7 +188,6 @@ struct GitTabView: View {
                     )
                     .frame(minWidth: 250, idealWidth: 280, maxWidth: 350)
 
-                    // Right: Diff view
                     DiffView(
                         diffOutput: gitService.selectedFileDiff,
                         fileName: selectedFile ?? "",
@@ -208,6 +202,7 @@ struct GitTabView: View {
                     systemImage: "checkmark.circle",
                     description: Text("Working tree is clean.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -246,7 +241,6 @@ struct GitTabHeader: View {
 
             Spacer()
 
-            // Git status badge
             if gitStatus.hasChanges {
                 GitStatusView(
                     additions: gitStatus.additions,
