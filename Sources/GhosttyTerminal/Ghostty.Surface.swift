@@ -39,7 +39,7 @@ extension Ghostty {
         @MainActor
         func sendText(_ text: String) {
             let len = text.utf8CString.count
-            if (len == 0) { return }
+            if len == 0 { return }
 
             text.withCString { ptr in
                 // len includes the null terminator so we do len - 1
@@ -137,7 +137,7 @@ extension Ghostty {
         @MainActor
         func perform(action: String) -> Bool {
             let len = action.utf8CString.count
-            if (len == 0) { return false }
+            if len == 0 { return false }
             return action.withCString { cString in
                 ghostty_surface_binding_action(surface, cString, UInt(len - 1))
             }

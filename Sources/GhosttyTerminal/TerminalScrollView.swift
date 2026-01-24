@@ -7,7 +7,6 @@
 //
 
 import AppKit
-import GhosttyKit
 import Combine
 import GhosttyKit
 
@@ -71,65 +70,71 @@ class TerminalScrollView: NSView {
 
         // We listen for scroll events through bounds notifications on our NSClipView.
         scrollView.contentView.postsBoundsChangedNotifications = true
-        observers.append(NotificationCenter.default.addObserver(
-            forName: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView,
-            queue: .main
-        ) { [weak self] notification in
-            MainActor.assumeIsolated {
-                self?.handleScrollChange(notification)
-            }
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] notification in
+                MainActor.assumeIsolated {
+                    self?.handleScrollChange(notification)
+                }
+            })
 
         // Listen for scrollbar updates from Ghostty
-        observers.append(NotificationCenter.default.addObserver(
-            forName: .ghosttyDidUpdateScrollbar,
-            object: surfaceView,
-            queue: .main
-        ) { [weak self] notification in
-            MainActor.assumeIsolated {
-                self?.handleScrollbarUpdate(notification)
-            }
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: .ghosttyDidUpdateScrollbar,
+                object: surfaceView,
+                queue: .main
+            ) { [weak self] notification in
+                MainActor.assumeIsolated {
+                    self?.handleScrollbarUpdate(notification)
+                }
+            })
 
         // Listen for live scroll events
-        observers.append(NotificationCenter.default.addObserver(
-            forName: NSScrollView.willStartLiveScrollNotification,
-            object: scrollView,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.isLiveScrolling = true
-            }
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSScrollView.willStartLiveScrollNotification,
+                object: scrollView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.isLiveScrolling = true
+                }
+            })
 
-        observers.append(NotificationCenter.default.addObserver(
-            forName: NSScrollView.didEndLiveScrollNotification,
-            object: scrollView,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.isLiveScrolling = false
-            }
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSScrollView.didEndLiveScrollNotification,
+                object: scrollView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.isLiveScrolling = false
+                }
+            })
 
-        observers.append(NotificationCenter.default.addObserver(
-            forName: NSScrollView.didLiveScrollNotification,
-            object: scrollView,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.handleLiveScroll()
-            }
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSScrollView.didLiveScrollNotification,
+                object: scrollView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.handleLiveScroll()
+                }
+            })
 
-        observers.append(NotificationCenter.default.addObserver(
-            forName: NSScroller.preferredScrollerStyleDidChangeNotification,
-            object: nil,
-            queue: nil
-        ) { [weak self] _ in
-            self?.handleScrollerStyleChange()
-        })
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSScroller.preferredScrollerStyleDidChangeNotification,
+                object: nil,
+                queue: nil
+            ) { [weak self] _ in
+                self?.handleScrollerStyleChange()
+            })
     }
 
     required init?(coder: NSCoder) {
@@ -285,14 +290,15 @@ class TerminalScrollView: NSView {
 
         // Our tracking area is the scroller frame
         guard let scroller = scrollView.verticalScroller else { return }
-        addTrackingArea(NSTrackingArea(
-            rect: convert(scroller.bounds, from: scroller),
-            options: [
-                .mouseMoved,
-                .activeInKeyWindow,
-            ],
-            owner: self,
-            userInfo: nil))
+        addTrackingArea(
+            NSTrackingArea(
+                rect: convert(scroller.bounds, from: scroller),
+                options: [
+                    .mouseMoved,
+                    .activeInKeyWindow,
+                ],
+                owner: self,
+                userInfo: nil))
     }
 }
 

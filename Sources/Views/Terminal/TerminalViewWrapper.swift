@@ -12,12 +12,12 @@ import SwiftUI
 // MARK: - Terminal View Coordinator
 
 class TerminalViewCoordinator {
-    let repositoryPath: String
+    let sessionId: UUID
     let onProcessExit: () -> Void
     private var exitCheckTimer: Timer?
 
-    init(repositoryPath: String, onProcessExit: @escaping () -> Void) {
-        self.repositoryPath = repositoryPath
+    init(sessionId: UUID, onProcessExit: @escaping () -> Void) {
+        self.sessionId = sessionId
         self.onProcessExit = onProcessExit
     }
 
@@ -52,7 +52,7 @@ class TerminalViewCoordinator {
 // MARK: - Terminal View Wrapper
 
 struct TerminalViewWrapper: NSViewRepresentable {
-    let workingDirectory: String
+    let session: TerminalSession
     @ObservedObject var ghosttyApp: Ghostty.App
     let sessionManager: TerminalSessionManager
     let onProcessExit: () -> Void
@@ -63,12 +63,12 @@ struct TerminalViewWrapper: NSViewRepresentable {
     let size: CGSize
 
     func makeCoordinator() -> TerminalViewCoordinator {
-        TerminalViewCoordinator(repositoryPath: workingDirectory, onProcessExit: onProcessExit)
+        TerminalViewCoordinator(sessionId: session.id, onProcessExit: onProcessExit)
     }
 
     func makeNSView(context: Context) -> NSView {
         // Check if terminal already exists
-        if let existingTerminal = sessionManager.getTerminal(for: workingDirectory) {
+        if let existingTerminal = sessionManager.getTerminal(for: session.id) {
             context.coordinator.startMonitoring(terminal: existingTerminal)
 
             DispatchQueue.main.async {
@@ -79,13 +79,13 @@ struct TerminalViewWrapper: NSViewRepresentable {
             }
 
             // Get or create scroll view wrapper
-            if let scrollView = sessionManager.getScrollView(for: workingDirectory) {
+            if let scrollView = sessionManager.getScrollView(for: session.id) {
                 return scrollView
             }
 
             // Create scroll view wrapper for existing terminal
             let scrollView = TerminalScrollView(contentSize: size, surfaceView: existingTerminal)
-            sessionManager.setScrollView(scrollView, for: workingDirectory)
+            sessionManager.setScrollView(scrollView, for: session.id)
             return scrollView
         }
 
@@ -100,7 +100,7 @@ struct TerminalViewWrapper: NSViewRepresentable {
         // Create new Ghostty terminal
         let terminalView = GhosttyTerminalView(
             frame: CGRect(origin: .zero, size: size),
-            worktreePath: workingDirectory,
+            worktreePath: session.repositoryPath,
             ghosttyApp: app,
             appWrapper: ghosttyApp
         )
@@ -108,14 +108,14 @@ struct TerminalViewWrapper: NSViewRepresentable {
         terminalView.onTitleChange = onTitleChange
 
         // Store terminal in manager
-        sessionManager.setTerminal(terminalView, for: workingDirectory)
+        sessionManager.setTerminal(terminalView, for: session.id)
 
         // Start monitoring for process exit
         context.coordinator.startMonitoring(terminal: terminalView)
 
         // Wrap in scroll view
         let scrollView = TerminalScrollView(contentSize: size, surfaceView: terminalView)
-        sessionManager.setScrollView(scrollView, for: workingDirectory)
+        sessionManager.setScrollView(scrollView, for: session.id)
 
         return scrollView
     }

@@ -8,16 +8,14 @@
 import AppKit
 import GhosttyKit
 import Metal
-import GhosttyKit
 import OSLog
-import GhosttyKit
 import SwiftUI
-import GhosttyKit
 
 /// Manages Metal rendering setup and configuration for Ghostty terminal
 @MainActor
 class GhosttyRenderingSetup {
-    nonisolated private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyRendering")
+    nonisolated private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyRendering")
 
     // MARK: - Terminal Settings from AppStorage
 
@@ -27,7 +25,8 @@ class GhosttyRenderingSetup {
     @AppStorage("terminalForegroundColor") private var terminalForegroundColor = "#cdd6f4"
     @AppStorage("terminalCursorColor") private var terminalCursorColor = "#f5e0dc"
     @AppStorage("terminalSelectionBackground") private var terminalSelectionBackground = "#585b70"
-    @AppStorage("terminalPalette") private var terminalPalette = "#45475a,#f38ba8,#a6e3a1,#f9e2af,#89b4fa,#f5c2e7,#94e2d5,#a6adc8,#585b70,#f37799,#89d88b,#ebd391,#74a8fc,#f2aede,#6bd7ca,#bac2de"
+    @AppStorage("terminalPalette") private var terminalPalette =
+        "#45475a,#f38ba8,#a6e3a1,#f9e2af,#89b4fa,#f5c2e7,#94e2d5,#a6adc8,#585b70,#f37799,#89d88b,#ebd391,#74a8fc,#f2aede,#6bd7ca,#bac2de"
     @AppStorage("terminalSessionPersistence") private var sessionPersistence = false
 
     // MARK: - Layer Setup
@@ -117,7 +116,8 @@ class GhosttyRenderingSetup {
         }
 
         // Immediately set size after creation to minimize "small grid" warnings
-        let scaledSize = view.convertToBacking(initialBounds.size.width > 0 ? initialBounds.size : NSSize(width: 800, height: 600))
+        let scaledSize = view.convertToBacking(
+            initialBounds.size.width > 0 ? initialBounds.size : NSSize(width: 800, height: 600))
         ghostty_surface_set_size(
             cSurface,
             UInt32(scaledSize.width),
@@ -143,7 +143,7 @@ class GhosttyRenderingSetup {
             guard let surface = surface?.unsafeCValue else { return }
 
             let scheme: ghostty_color_scheme_e
-            switch (appearance.name) {
+            switch appearance.name {
             case .aqua, .vibrantLight:
                 scheme = GHOSTTY_COLOR_SCHEME_LIGHT
 
@@ -188,7 +188,9 @@ class GhosttyRenderingSetup {
     }
 
     /// Update Metal layer frame and Ghostty surface size
-    func updateLayout(view: NSView, metalLayer: CAMetalLayer?, surface: ghostty_surface_t?, lastSize: inout CGSize) -> Bool {
+    func updateLayout(view: NSView, metalLayer: CAMetalLayer?, surface: ghostty_surface_t?, lastSize: inout CGSize)
+        -> Bool
+    {
         // Update Metal layer frame to match view bounds
         if let metalLayer = metalLayer {
             metalLayer.frame = view.bounds

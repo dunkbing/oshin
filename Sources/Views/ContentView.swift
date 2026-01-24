@@ -149,12 +149,220 @@ struct TerminalTabView: View {
     let workingDirectory: String
     @ObservedObject var ghosttyApp: Ghostty.App
 
-    private let sessionManager = TerminalSessionManager.shared
+    @ObservedObject private var sessionManager = TerminalSessionManager.shared
+    @State private var selectedSessionId: UUID?
+
+    private var sessions: [TerminalSession] {
+        sessionManager.getSessions(for: workingDirectory)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab bar
+            TerminalTabBar(
+                sessions: sessions,
+                selectedSessionId: $selectedSessionId,
+                onClose: { session in
+                    closeSession(session)
+                },
+                onAdd: {
+                    createNewSession()
+                }
+            )
+
+            Divider()
+
+            // Terminal content
+            if sessions.isEmpty {
+                terminalEmptyState
+            } else {
+                ZStack {
+                    ForEach(sessions) { session in
+                        let isSelected = selectedSessionId == session.id
+                        TerminalPaneView(
+                            session: session,
+                            ghosttyApp: ghosttyApp,
+                            sessionManager: sessionManager,
+                            isSelected: isSelected,
+                            onClose: {
+                                closeSession(session)
+                            }
+                        )
+                        .opacity(isSelected ? 1 : 0)
+                        .allowsHitTesting(isSelected)
+                        .zIndex(isSelected ? 1 : 0)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            // Create initial session if none exist
+            if sessions.isEmpty {
+                createNewSession()
+            } else if selectedSessionId == nil {
+                selectedSessionId = sessions.first?.id
+            }
+        }
+    }
+
+    private var terminalEmptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "terminal.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.secondary)
+
+            Text("No Terminal Sessions")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Button {
+                createNewSession()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("New Terminal")
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.blue, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func createNewSession() {
+        let session = sessionManager.createSession(for: workingDirectory)
+        selectedSessionId = session.id
+    }
+
+    private func closeSession(_ session: TerminalSession) {
+        let wasSelected = selectedSessionId == session.id
+        sessionManager.removeSession(session)
+
+        if wasSelected {
+            selectedSessionId = sessions.first?.id
+        }
+    }
+}
+
+// MARK: - Terminal Tab Bar
+
+struct TerminalTabBar: View {
+    let sessions: [TerminalSession]
+    @Binding var selectedSessionId: UUID?
+    let onClose: (TerminalSession) -> Void
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(sessions) { session in
+                        TerminalTabButton(
+                            session: session,
+                            isSelected: selectedSessionId == session.id,
+                            onSelect: { selectedSessionId = session.id },
+                            onClose: { onClose(session) }
+                        )
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
+
+            Spacer()
+
+            // New tab button
+            Button {
+                onAdd()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 12))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 8)
+        }
+        .frame(height: 36)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - Terminal Tab Button
+
+struct TerminalTabButton: View {
+    @ObservedObject var session: TerminalSession
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onClose: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 6) {
+                // Close button
+                Button {
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .frame(width: 14, height: 14)
+                        .background(
+                            Circle()
+                                .fill(isHovering ? Color.primary.opacity(0.1) : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovering || isSelected ? 1 : 0)
+
+                Image(systemName: "terminal")
+                    .font(.system(size: 11))
+
+                Text(session.title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 100)
+            }
+            .padding(.leading, 6)
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(
+                        isSelected
+                            ? Color.primary.opacity(0.1) : (isHovering ? Color.primary.opacity(0.05) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .help(session.title)
+    }
+}
+
+// MARK: - Terminal Pane View
+
+struct TerminalPaneView: View {
+    @ObservedObject var session: TerminalSession
+    @ObservedObject var ghosttyApp: Ghostty.App
+    let sessionManager: TerminalSessionManager
+    let isSelected: Bool
+    let onClose: () -> Void
 
     @State private var shouldFocus: Bool = false
     @State private var focusVersion: Int = 0
-    @State private var terminalTitle: String = "Terminal"
-    @State private var processExited: Bool = false
     @State private var isResizing: Bool = false
     @State private var terminalSize: (columns: UInt16, rows: UInt16) = (0, 0)
     @State private var hideWorkItem: DispatchWorkItem?
@@ -163,17 +371,17 @@ struct TerminalTabView: View {
         GeometryReader { geo in
             ZStack {
                 TerminalViewWrapper(
-                    workingDirectory: workingDirectory,
+                    session: session,
                     ghosttyApp: ghosttyApp,
                     sessionManager: sessionManager,
                     onProcessExit: {
-                        processExited = true
+                        onClose()
                     },
                     onTitleChange: { title in
-                        terminalTitle = title
+                        session.title = title
                     },
                     shouldFocus: shouldFocus,
-                    isFocused: true,
+                    isFocused: isSelected,
                     focusVersion: focusVersion,
                     size: geo.size
                 )
@@ -186,38 +394,30 @@ struct TerminalTabView: View {
                         .transition(.opacity)
                         .animation(.easeOut(duration: 0.1), value: isResizing)
                 }
-
-                // Process exited overlay
-                if processExited {
-                    VStack(spacing: 16) {
-                        Image(systemName: "terminal")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.secondary)
-
-                        Text("Terminal session ended")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-
-                        Button("Restart Terminal") {
-                            restartTerminal()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.ultraThinMaterial)
-                }
             }
             .onChange(of: geo.size) { _, _ in
                 handleSizeChange()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: isSelected) { _, newValue in
+            if newValue {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    shouldFocus = true
+                    focusVersion += 1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        shouldFocus = false
+                    }
+                }
+            }
+        }
         .onAppear {
-            // Focus terminal on appear
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                shouldFocus = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    shouldFocus = false
+            if isSelected {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    shouldFocus = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        shouldFocus = false
+                    }
                 }
             }
         }
@@ -228,8 +428,9 @@ struct TerminalTabView: View {
     }
 
     private func handleSizeChange() {
-        guard let terminal = sessionManager.getTerminal(for: workingDirectory),
-              let termSize = terminal.terminalSize() else { return }
+        guard let terminal = sessionManager.getTerminal(for: session.id),
+            let termSize = terminal.terminalSize()
+        else { return }
 
         terminalSize = (termSize.columns, termSize.rows)
         isResizing = true
@@ -240,12 +441,6 @@ struct TerminalTabView: View {
         }
         hideWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
-    }
-
-    private func restartTerminal() {
-        sessionManager.removeTerminal(for: workingDirectory)
-        processExited = false
-        focusVersion += 1
     }
 }
 

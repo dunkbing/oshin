@@ -1,5 +1,4 @@
 import AppKit
-import GhosttyKit
 import Foundation
 import GhosttyKit
 

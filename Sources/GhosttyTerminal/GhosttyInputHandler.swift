@@ -8,7 +8,6 @@
 import AppKit
 import GhosttyKit
 import OSLog
-import GhosttyKit
 
 /// Manages input event forwarding (keyboard, mouse, scroll) to Ghostty terminal
 @MainActor
@@ -19,7 +18,8 @@ class GhosttyInputHandler {
     private weak var surface: Ghostty.Surface?
     private weak var imeHandler: GhosttyIMEHandler?
 
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyInput")
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyInput")
 
     // MARK: - Initialization
 
@@ -93,8 +93,9 @@ class GhosttyInputHandler {
         // Set text field if we have printable characters
         // Control characters (< 0x20) are encoded by Ghostty itself
         if let chars = event.ghosttyCharacters,
-           let codepoint = chars.utf8.first,
-           codepoint >= 0x20 {
+            let codepoint = chars.utf8.first,
+            codepoint >= 0x20
+        {
             chars.withCString { textPtr in
                 keyEvent.text = textPtr
                 keyEvent.composing = false
@@ -135,7 +136,8 @@ class GhosttyInputHandler {
         }
 
         // Determine if press or release
-        let action: ghostty_input_action_e = (mods.rawValue & mod != 0)
+        let action: ghostty_input_action_e =
+            (mods.rawValue & mod != 0)
             ? GHOSTTY_ACTION_PRESS
             : GHOSTTY_ACTION_RELEASE
 
@@ -296,8 +298,9 @@ extension NSEvent {
 
         // Unshifted codepoint for key identification
         if type == .keyDown || type == .keyUp,
-           let chars = characters(byApplyingModifiers: []),
-           let codepoint = chars.unicodeScalars.first {
+            let chars = characters(byApplyingModifiers: []),
+            let codepoint = chars.unicodeScalars.first
+        {
             keyEvent.unshifted_codepoint = codepoint.value
         } else {
             keyEvent.unshifted_codepoint = 0
@@ -314,7 +317,8 @@ extension NSEvent {
         guard let characters = characters else { return nil }
 
         if characters.count == 1,
-           let scalar = characters.unicodeScalars.first {
+            let scalar = characters.unicodeScalars.first
+        {
             // Skip control characters (Ghostty handles internally)
             if scalar.value < 0x20 {
                 return self.characters(byApplyingModifiers: modifierFlags.subtracting(.control))

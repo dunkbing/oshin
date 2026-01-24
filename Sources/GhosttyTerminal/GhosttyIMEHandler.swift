@@ -9,7 +9,6 @@
 import AppKit
 import GhosttyKit
 import OSLog
-import GhosttyKit
 
 /// Manages IME (Input Method Editor) state and text input handling for Ghostty terminal
 @MainActor
@@ -25,14 +24,15 @@ class GhosttyIMEHandler {
     /// Attributes for displaying marked text
     private let markedTextAttributes: [NSAttributedString.Key: Any] = [
         .underlineStyle: NSUnderlineStyle.single.rawValue,
-        .underlineColor: NSColor.textColor
+        .underlineColor: NSColor.textColor,
     ]
 
     /// Accumulates text from insertText calls during keyDown
     /// Set to non-nil during keyDown to track if IME inserted text
     private(set) var keyTextAccumulator: [String]?
 
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyIME")
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyIME")
 
     // MARK: - Initialization
 
@@ -147,11 +147,14 @@ class GhosttyIMEHandler {
             .underlineStyle,
             .underlineColor,
             .backgroundColor,
-            .foregroundColor
+            .foregroundColor,
         ]
     }
 
-    func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?, viewFrame: NSRect, window: NSWindow?, surface: ghostty_surface_t?) -> NSRect {
+    func firstRect(
+        forCharacterRange range: NSRange, actualRange: NSRangePointer?, viewFrame: NSRect, window: NSWindow?,
+        surface: ghostty_surface_t?
+    ) -> NSRect {
         // Get cursor position from Ghostty for IME window placement
         guard let surface = surface else {
             return NSRect(x: viewFrame.origin.x, y: viewFrame.origin.y, width: 0, height: 0)

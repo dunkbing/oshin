@@ -8,11 +8,8 @@
 import AppKit
 import GhosttyKit
 import Metal
-import GhosttyKit
 import OSLog
-import GhosttyKit
 import SwiftUI
-import GhosttyKit
 
 /// NSView that embeds a Ghostty terminal surface with Metal rendering
 ///
@@ -38,10 +35,10 @@ class GhosttyTerminalView: NSView {
 
     /// Callback invoked when the terminal title changes
     var onTitleChange: ((String) -> Void)?
-    
+
     /// Callback when the surface has produced its first layout/draw (used to hide loading UI)
     var onReady: (() -> Void)?
-    
+
     /// Callback for OSC 9;4 progress reports
     var onProgressReport: ((GhosttyProgressState, Int?) -> Void)?
     private var didSignalReady = false
@@ -52,7 +49,8 @@ class GhosttyTerminalView: NSView {
     /// Current scrollbar state from Ghostty core (used by scroll view)
     var scrollbar: Ghostty.Action.Scrollbar?
 
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyTerminal")
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "win.aizen.app", category: "GhosttyTerminal")
 
     // MARK: - Handler Components
 
@@ -74,7 +72,10 @@ class GhosttyTerminalView: NSView {
     ///   - appWrapper: The Ghostty.App wrapper for surface tracking (optional)
     ///   - paneId: Unique identifier for this pane (used for tmux session persistence)
     ///   - command: Optional command to run instead of default shell
-    init(frame: NSRect, worktreePath: String, ghosttyApp: ghostty_app_t, appWrapper: Ghostty.App? = nil, paneId: String? = nil, command: String? = nil) {
+    init(
+        frame: NSRect, worktreePath: String, ghosttyApp: ghostty_app_t, appWrapper: Ghostty.App? = nil,
+        paneId: String? = nil, command: String? = nil
+    ) {
         self.worktreePath = worktreePath
         self.ghosttyApp = ghosttyApp
         self.ghosttyAppWrapper = appWrapper
@@ -131,15 +132,17 @@ class GhosttyTerminalView: NSView {
             return
         }
 
-        guard let cSurface = renderingSetup.setupSurface(
-            view: self,
-            ghosttyApp: app,
-            worktreePath: worktreePath,
-            initialBounds: bounds,
-            window: window,
-            paneId: paneId,
-            command: initialCommand
-        ) else {
+        guard
+            let cSurface = renderingSetup.setupSurface(
+                view: self,
+                ghosttyApp: app,
+                worktreePath: worktreePath,
+                initialBounds: bounds,
+                window: window,
+                paneId: paneId,
+                command: initialCommand
+            )
+        else {
             return
         }
 
@@ -162,7 +165,7 @@ class GhosttyTerminalView: NSView {
             .mouseEnteredAndExited,
             .mouseMoved,
             .inVisibleRect,
-            .activeAlways  // Track even when not focused
+            .activeAlways,  // Track even when not focused
         ]
 
         let trackingArea = NSTrackingArea(

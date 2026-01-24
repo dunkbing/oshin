@@ -470,14 +470,14 @@ extension Ghostty.Input {
             case .shiftRight: return 0x003c
             case .space: return 0x0031
             case .tab: return 0x0030
-            case .convert: return nil // No Mac keycode
-            case .kanaMode: return nil // No Mac keycode
-            case .nonConvert: return nil // No Mac keycode
+            case .convert: return nil  // No Mac keycode
+            case .kanaMode: return nil  // No Mac keycode
+            case .nonConvert: return nil  // No Mac keycode
 
             // Control Pad Section
             case .delete: return 0x0075
             case .end: return 0x0077
-            case .help: return nil // No Mac keycode
+            case .help: return nil  // No Mac keycode
             case .home: return 0x0073
             case .insert: return 0x0072
             case .pageDown: return 0x0079
@@ -502,35 +502,35 @@ extension Ghostty.Input {
             case .numpad8: return 0x005b
             case .numpad9: return 0x005c
             case .numpadAdd: return 0x0045
-            case .numpadBackspace: return nil // No Mac keycode
-            case .numpadClear: return nil // No Mac keycode
-            case .numpadClearEntry: return nil // No Mac keycode
+            case .numpadBackspace: return nil  // No Mac keycode
+            case .numpadClear: return nil  // No Mac keycode
+            case .numpadClearEntry: return nil  // No Mac keycode
             case .numpadComma: return 0x005f
             case .numpadDecimal: return 0x0041
             case .numpadDivide: return 0x004b
             case .numpadEnter: return 0x004c
             case .numpadEqual: return 0x0051
-            case .numpadMemoryAdd: return nil // No Mac keycode
-            case .numpadMemoryClear: return nil // No Mac keycode
-            case .numpadMemoryRecall: return nil // No Mac keycode
-            case .numpadMemoryStore: return nil // No Mac keycode
-            case .numpadMemorySubtract: return nil // No Mac keycode
+            case .numpadMemoryAdd: return nil  // No Mac keycode
+            case .numpadMemoryClear: return nil  // No Mac keycode
+            case .numpadMemoryRecall: return nil  // No Mac keycode
+            case .numpadMemoryStore: return nil  // No Mac keycode
+            case .numpadMemorySubtract: return nil  // No Mac keycode
             case .numpadMultiply: return 0x0043
-            case .numpadParenLeft: return nil // No Mac keycode
-            case .numpadParenRight: return nil // No Mac keycode
+            case .numpadParenLeft: return nil  // No Mac keycode
+            case .numpadParenRight: return nil  // No Mac keycode
             case .numpadSubtract: return 0x004e
-            case .numpadSeparator: return nil // No Mac keycode
-            case .numpadUp: return nil // No Mac keycode
-            case .numpadDown: return nil // No Mac keycode
-            case .numpadRight: return nil // No Mac keycode
-            case .numpadLeft: return nil // No Mac keycode
-            case .numpadBegin: return nil // No Mac keycode
-            case .numpadHome: return nil // No Mac keycode
-            case .numpadEnd: return nil // No Mac keycode
-            case .numpadInsert: return nil // No Mac keycode
-            case .numpadDelete: return nil // No Mac keycode
-            case .numpadPageUp: return nil // No Mac keycode
-            case .numpadPageDown: return nil // No Mac keycode
+            case .numpadSeparator: return nil  // No Mac keycode
+            case .numpadUp: return nil  // No Mac keycode
+            case .numpadDown: return nil  // No Mac keycode
+            case .numpadRight: return nil  // No Mac keycode
+            case .numpadLeft: return nil  // No Mac keycode
+            case .numpadBegin: return nil  // No Mac keycode
+            case .numpadHome: return nil  // No Mac keycode
+            case .numpadEnd: return nil  // No Mac keycode
+            case .numpadInsert: return nil  // No Mac keycode
+            case .numpadDelete: return nil  // No Mac keycode
+            case .numpadPageUp: return nil  // No Mac keycode
+            case .numpadPageDown: return nil  // No Mac keycode
 
             // Function Section
             case .escape: return 0x0035
@@ -554,45 +554,45 @@ extension Ghostty.Input {
             case .f18: return 0x004f
             case .f19: return 0x0050
             case .f20: return 0x005a
-            case .f21: return nil // No Mac keycode
-            case .f22: return nil // No Mac keycode
-            case .f23: return nil // No Mac keycode
-            case .f24: return nil // No Mac keycode
-            case .f25: return nil // No Mac keycode
-            case .fn: return nil // No Mac keycode
-            case .fnLock: return nil // No Mac keycode
-            case .printScreen: return nil // No Mac keycode
-            case .scrollLock: return nil // No Mac keycode
-            case .pause: return nil // No Mac keycode
+            case .f21: return nil  // No Mac keycode
+            case .f22: return nil  // No Mac keycode
+            case .f23: return nil  // No Mac keycode
+            case .f24: return nil  // No Mac keycode
+            case .f25: return nil  // No Mac keycode
+            case .fn: return nil  // No Mac keycode
+            case .fnLock: return nil  // No Mac keycode
+            case .printScreen: return nil  // No Mac keycode
+            case .scrollLock: return nil  // No Mac keycode
+            case .pause: return nil  // No Mac keycode
 
             // Media Keys
-            case .browserBack: return nil // No Mac keycode
-            case .browserFavorites: return nil // No Mac keycode
-            case .browserForward: return nil // No Mac keycode
-            case .browserHome: return nil // No Mac keycode
-            case .browserRefresh: return nil // No Mac keycode
-            case .browserSearch: return nil // No Mac keycode
-            case .browserStop: return nil // No Mac keycode
-            case .eject: return nil // No Mac keycode
-            case .launchApp1: return nil // No Mac keycode
-            case .launchApp2: return nil // No Mac keycode
-            case .launchMail: return nil // No Mac keycode
-            case .mediaPlayPause: return nil // No Mac keycode
-            case .mediaSelect: return nil // No Mac keycode
-            case .mediaStop: return nil // No Mac keycode
-            case .mediaTrackNext: return nil // No Mac keycode
-            case .mediaTrackPrevious: return nil // No Mac keycode
-            case .power: return nil // No Mac keycode
-            case .sleep: return nil // No Mac keycode
+            case .browserBack: return nil  // No Mac keycode
+            case .browserFavorites: return nil  // No Mac keycode
+            case .browserForward: return nil  // No Mac keycode
+            case .browserHome: return nil  // No Mac keycode
+            case .browserRefresh: return nil  // No Mac keycode
+            case .browserSearch: return nil  // No Mac keycode
+            case .browserStop: return nil  // No Mac keycode
+            case .eject: return nil  // No Mac keycode
+            case .launchApp1: return nil  // No Mac keycode
+            case .launchApp2: return nil  // No Mac keycode
+            case .launchMail: return nil  // No Mac keycode
+            case .mediaPlayPause: return nil  // No Mac keycode
+            case .mediaSelect: return nil  // No Mac keycode
+            case .mediaStop: return nil  // No Mac keycode
+            case .mediaTrackNext: return nil  // No Mac keycode
+            case .mediaTrackPrevious: return nil  // No Mac keycode
+            case .power: return nil  // No Mac keycode
+            case .sleep: return nil  // No Mac keycode
             case .audioVolumeDown: return 0x0049
             case .audioVolumeMute: return 0x004a
             case .audioVolumeUp: return 0x0048
-            case .wakeUp: return nil // No Mac keycode
+            case .wakeUp: return nil  // No Mac keycode
 
             // Legacy, Non-standard, and Special Keys
-            case .copy: return nil // No Mac keycode
-            case .cut: return nil // No Mac keycode
-            case .paste: return nil // No Mac keycode
+            case .copy: return nil  // No Mac keycode
+            case .cut: return nil  // No Mac keycode
+            case .paste: return nil  // No Mac keycode
             }
         }
     }

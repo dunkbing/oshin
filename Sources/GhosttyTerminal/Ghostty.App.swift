@@ -5,16 +5,12 @@
 //  Minimal Ghostty app wrapper - Phase 1: Basic lifecycle
 //
 
+import AppKit
+import Combine
 import Foundation
 import GhosttyKit
-import AppKit
-import GhosttyKit
-import Combine
-import GhosttyKit
 import OSLog
-import GhosttyKit
 import SwiftUI
-import GhosttyKit
 
 // MARK: - Ghostty Namespace
 
@@ -111,7 +107,9 @@ extension Ghostty {
                 wakeup_cb: { userdata in App.wakeup(userdata) },
                 action_cb: { app, target, action in App.action(app!, target: target, action: action) },
                 read_clipboard_cb: { userdata, loc, state in App.readClipboard(userdata, location: loc, state: state) },
-                confirm_read_clipboard_cb: { userdata, str, state, request in App.confirmReadClipboard(userdata, string: str, state: state, request: request) },
+                confirm_read_clipboard_cb: { userdata, str, state, request in
+                    App.confirmReadClipboard(userdata, string: str, state: state, request: request)
+                },
                 write_clipboard_cb: { userdata, loc, content, count, confirm in
                     App.writeClipboard(userdata, location: loc, contents: content, count: count, confirm: confirm)
                 },
@@ -301,30 +299,30 @@ extension Ghostty {
 
                 // Create config with font settings, shell integration, and theme
                 let configContent = """
-                font-family = \(terminalFontName)
-                font-size = \(Int(terminalFontSize))
-                window-inherit-font-size = false
-                window-padding-balance = true
-                window-padding-x = 0
-                window-padding-y = 0
-                window-padding-color = extend-always
+                    font-family = \(terminalFontName)
+                    font-size = \(Int(terminalFontSize))
+                    window-inherit-font-size = false
+                    window-padding-balance = true
+                    window-padding-x = 0
+                    window-padding-y = 0
+                    window-padding-color = extend-always
 
-                # Enable shell integration (resources dir auto-detected from app bundle)
-                shell-integration = \(shellName)
-                shell-integration-features = no-cursor,sudo,title
+                    # Enable shell integration (resources dir auto-detected from app bundle)
+                    shell-integration = \(shellName)
+                    shell-integration-features = no-cursor,sudo,title
 
-                # Cursor
-                cursor-style-blink = true
+                    # Cursor
+                    cursor-style-blink = true
 
-                theme = \(effectiveThemeName)
+                    theme = \(effectiveThemeName)
 
-                # Disable audible bell
-                audible-bell = false
+                    # Disable audible bell
+                    audible-bell = false
 
-                # Custom keybinds
-                keybind = shift+enter=text:\\n
+                    # Custom keybinds
+                    keybind = shift+enter=text:\\n
 
-                """
+                    """
 
                 Ghostty.logger.info("Loading Ghostty theme: \(self.effectiveThemeName)")
 
@@ -340,7 +338,9 @@ extension Ghostty {
                 // Will NOT load user's Ghostty config (com.mitchellh.ghostty) since bundle ID is different
                 ghostty_config_load_default_files(config)
 
-                Ghostty.logger.info("Loaded Aizen terminal settings - Font: \(self.terminalFontName) \(Int(self.terminalFontSize))pt, Theme: \(self.effectiveThemeName)")
+                Ghostty.logger.info(
+                    "Loaded Aizen terminal settings - Font: \(self.terminalFontName) \(Int(self.terminalFontSize))pt, Theme: \(self.effectiveThemeName)"
+                )
             } catch {
                 Ghostty.logger.warning("Failed to write config: \(error)")
             }
@@ -431,7 +431,9 @@ extension Ghostty {
             }
         }
 
-        static func readClipboard(_ userdata: UnsafeMutableRawPointer?, location: ghostty_clipboard_e, state: UnsafeMutableRawPointer?) {
+        static func readClipboard(
+            _ userdata: UnsafeMutableRawPointer?, location: ghostty_clipboard_e, state: UnsafeMutableRawPointer?
+        ) {
             // userdata is the GhosttyTerminalView instance
             guard let userdata = userdata else { return }
             let terminalView = Unmanaged<GhosttyTerminalView>.fromOpaque(userdata).takeUnretainedValue()
@@ -480,12 +482,14 @@ extension Ghostty {
                 if !string.isEmpty {
                     // Apply copy transformations from settings
                     let settings = TerminalCopySettings(
-                        trimTrailingWhitespace: UserDefaults.standard.object(forKey: "terminalCopyTrimTrailingWhitespace") as? Bool ?? true,
+                        trimTrailingWhitespace: UserDefaults.standard.object(
+                            forKey: "terminalCopyTrimTrailingWhitespace") as? Bool ?? true,
                         collapseBlankLines: UserDefaults.standard.bool(forKey: "terminalCopyCollapseBlankLines"),
                         stripShellPrompts: UserDefaults.standard.bool(forKey: "terminalCopyStripShellPrompts"),
                         flattenCommands: UserDefaults.standard.bool(forKey: "terminalCopyFlattenCommands"),
                         removeBoxDrawing: UserDefaults.standard.bool(forKey: "terminalCopyRemoveBoxDrawing"),
-                        stripAnsiCodes: UserDefaults.standard.object(forKey: "terminalCopyStripAnsiCodes") as? Bool ?? true
+                        stripAnsiCodes: UserDefaults.standard.object(forKey: "terminalCopyStripAnsiCodes") as? Bool
+                            ?? true
                     )
                     string = TerminalTextCleaner.cleanText(string, settings: settings)
 
