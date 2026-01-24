@@ -41,14 +41,9 @@ struct GitStatus: Equatable, Identifiable {
 
     // Custom equality that ignores id (for semantic equality)
     static func == (lhs: GitStatus, rhs: GitStatus) -> Bool {
-        lhs.stagedFiles == rhs.stagedFiles &&
-        lhs.modifiedFiles == rhs.modifiedFiles &&
-        lhs.untrackedFiles == rhs.untrackedFiles &&
-        lhs.conflictedFiles == rhs.conflictedFiles &&
-        lhs.currentBranch == rhs.currentBranch &&
-        lhs.aheadCount == rhs.aheadCount &&
-        lhs.behindCount == rhs.behindCount &&
-        lhs.additions == rhs.additions &&
-        lhs.deletions == rhs.deletions
+        lhs.stagedFiles == rhs.stagedFiles && lhs.modifiedFiles == rhs.modifiedFiles
+            && lhs.untrackedFiles == rhs.untrackedFiles && lhs.conflictedFiles == rhs.conflictedFiles
+            && lhs.currentBranch == rhs.currentBranch && lhs.aheadCount == rhs.aheadCount
+            && lhs.behindCount == rhs.behindCount && lhs.additions == rhs.additions && lhs.deletions == rhs.deletions
     }
 }

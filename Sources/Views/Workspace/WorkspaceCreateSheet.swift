@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkspaceCreateSheet: View {
     @Environment(\.modelContext) private var modelContext
@@ -11,7 +11,7 @@ struct WorkspaceCreateSheet: View {
 
     private let colors = [
         "#007AFF", "#34C759", "#FF9500", "#FF3B30",
-        "#AF52DE", "#5856D6", "#FF2D55", "#00C7BE"
+        "#AF52DE", "#5856D6", "#FF2D55", "#00C7BE",
     ]
 
     var body: some View {

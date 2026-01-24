@@ -5,8 +5,8 @@
 //  Shared diff line types and models
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Diff Line Type
 
@@ -80,9 +80,7 @@ struct DiffLine: Identifiable, Hashable, Sendable {
     }
 
     static func == (lhs: DiffLine, rhs: DiffLine) -> Bool {
-        lhs.lineNumber == rhs.lineNumber &&
-        lhs.content == rhs.content &&
-        lhs.type == rhs.type
+        lhs.lineNumber == rhs.lineNumber && lhs.content == rhs.content && lhs.type == rhs.type
     }
 }
 
@@ -111,43 +109,48 @@ struct DiffLineParser {
                     oldNum = parsedOld - 1
                     newNum = parsedNew - 1
                 }
-                lines.append(DiffLine(
-                    lineNumber: index,
-                    oldLineNumber: nil,
-                    newLineNumber: nil,
-                    content: line,
-                    type: .header
-                ))
+                lines.append(
+                    DiffLine(
+                        lineNumber: index,
+                        oldLineNumber: nil,
+                        newLineNumber: nil,
+                        content: line,
+                        type: .header
+                    ))
             } else if line.hasPrefix("+") && !line.hasPrefix("+++") {
                 newNum += 1
-                lines.append(DiffLine(
-                    lineNumber: index,
-                    oldLineNumber: nil,
-                    newLineNumber: String(newNum),
-                    content: String(line.dropFirst()),
-                    type: .added
-                ))
+                lines.append(
+                    DiffLine(
+                        lineNumber: index,
+                        oldLineNumber: nil,
+                        newLineNumber: String(newNum),
+                        content: String(line.dropFirst()),
+                        type: .added
+                    ))
             } else if line.hasPrefix("-") && !line.hasPrefix("---") {
                 oldNum += 1
-                lines.append(DiffLine(
-                    lineNumber: index,
-                    oldLineNumber: String(oldNum),
-                    newLineNumber: nil,
-                    content: String(line.dropFirst()),
-                    type: .deleted
-                ))
+                lines.append(
+                    DiffLine(
+                        lineNumber: index,
+                        oldLineNumber: String(oldNum),
+                        newLineNumber: nil,
+                        content: String(line.dropFirst()),
+                        type: .deleted
+                    ))
             } else if line.hasPrefix(" ") {
                 oldNum += 1
                 newNum += 1
-                lines.append(DiffLine(
-                    lineNumber: index,
-                    oldLineNumber: String(oldNum),
-                    newLineNumber: String(newNum),
-                    content: String(line.dropFirst()),
-                    type: .context
-                ))
-            } else if line.hasPrefix("diff --git") || line.hasPrefix("index ") ||
-                      line.hasPrefix("---") || line.hasPrefix("+++") {
+                lines.append(
+                    DiffLine(
+                        lineNumber: index,
+                        oldLineNumber: String(oldNum),
+                        newLineNumber: String(newNum),
+                        content: String(line.dropFirst()),
+                        type: .context
+                    ))
+            } else if line.hasPrefix("diff --git") || line.hasPrefix("index ") || line.hasPrefix("---")
+                || line.hasPrefix("+++")
+            {
                 // Skip diff headers
                 continue
             }
@@ -163,7 +166,8 @@ struct DiffLineParser {
         if let minusRange = line.range(of: "-") {
             let afterMinus = line[minusRange.upperBound...]
             if let end = afterMinus.firstIndex(where: { $0 == "," || $0 == " " }),
-               let num = Int(afterMinus[..<end]) {
+                let num = Int(afterMinus[..<end])
+            {
                 oldNum = num
             }
         }
@@ -171,7 +175,8 @@ struct DiffLineParser {
         if let plusRange = line.range(of: " +") {
             let afterPlus = line[plusRange.upperBound...]
             if let end = afterPlus.firstIndex(where: { $0 == "," || $0 == " " }),
-               let num = Int(afterPlus[..<end]) {
+                let num = Int(afterPlus[..<end])
+            {
                 newNum = num
             }
         }

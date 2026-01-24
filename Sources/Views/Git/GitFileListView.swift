@@ -78,16 +78,18 @@ struct GitFileListView: View {
         rowContainer(file: file) {
             HStack(spacing: 8) {
                 if let staged = isStaged {
-                    Toggle(isOn: Binding(
-                        get: { staged },
-                        set: { newValue in
-                            if newValue {
-                                onStageFile(file)
-                            } else {
-                                onUnstageFile(file)
+                    Toggle(
+                        isOn: Binding(
+                            get: { staged },
+                            set: { newValue in
+                                if newValue {
+                                    onStageFile(file)
+                                } else {
+                                    onUnstageFile(file)
+                                }
                             }
-                        }
-                    )) {
+                        )
+                    ) {
                         EmptyView()
                     }
                     .toggleStyle(.checkbox)

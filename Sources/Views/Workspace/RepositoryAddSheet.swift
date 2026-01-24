@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 enum AddRepositoryMode: String, CaseIterable {
     case existing = "Open Existing"
