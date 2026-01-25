@@ -56,5 +56,17 @@ struct AgentMonitorApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
         .defaultSize(width: 1000, height: 700)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
+
+        Settings {
+            SettingsView()
+        }
     }
 }

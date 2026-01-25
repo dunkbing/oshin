@@ -1,0 +1,144 @@
+//
+//  GitHubReleaseInstaller.swift
+//  agentmonitor
+//
+//  GitHub release API integration for agent installation
+//
+
+import Foundation
+import os.log
+
+actor GitHubReleaseInstaller {
+    static let shared = GitHubReleaseInstaller()
+
+    private let urlSession: URLSession
+    private let binaryInstaller: BinaryAgentInstaller
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        category: "GitHubInstaller"
+    )
+
+    init(urlSession: URLSession = .shared, binaryInstaller: BinaryAgentInstaller = .shared) {
+        self.urlSession = urlSession
+        self.binaryInstaller = binaryInstaller
+    }
+
+    // MARK: - Installation
+
+    func install(repo: String, assetPattern: String, agentId: String, targetDir: String)
+        async throws
+    {
+        guard let apiURL = URL(string: "https://api.github.com/repos/\(repo)/releases/latest")
+        else {
+            throw AgentInstallError.invalidResponse
+        }
+
+        var request = URLRequest(url: apiURL, timeoutInterval: 30)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await urlSession.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AgentInstallError.downloadFailed(message: "Invalid response from GitHub API")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorMessage = formatHTTPError(statusCode: httpResponse.statusCode, repo: repo)
+            throw AgentInstallError.downloadFailed(message: errorMessage)
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let tagName = json["tag_name"] as? String
+        else {
+            throw AgentInstallError.invalidResponse
+        }
+
+        let downloadURL = buildDownloadURL(
+            repo: repo,
+            tagName: tagName,
+            assetPattern: assetPattern
+        )
+
+        try await binaryInstaller.install(
+            from: downloadURL,
+            agentId: agentId,
+            targetDir: targetDir
+        )
+
+        let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+        saveVersionManifest(version: version, targetDir: targetDir)
+        logger.info("Installed \(agentId) version \(version) from \(repo)")
+    }
+
+    // MARK: - Version Detection
+
+    func getLatestVersion(repo: String) async -> String? {
+        guard let apiURL = URL(string: "https://api.github.com/repos/\(repo)/releases/latest")
+        else {
+            return nil
+        }
+
+        var request = URLRequest(url: apiURL, timeoutInterval: 30)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                (200...299).contains(httpResponse.statusCode)
+            else {
+                return nil
+            }
+
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let tagName = json["tag_name"] as? String
+            {
+                return tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+            }
+        } catch {
+            logger.error(
+                "Failed to get latest GitHub version for \(repo): \(error.localizedDescription)")
+        }
+
+        return nil
+    }
+
+    private func saveVersionManifest(version: String, targetDir: String) {
+        let manifestPath = (targetDir as NSString).appendingPathComponent(".version")
+        try? version.write(toFile: manifestPath, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: - Helpers
+
+    private func formatHTTPError(statusCode: Int, repo: String) -> String {
+        switch statusCode {
+        case 403, 429:
+            return "GitHub API rate limit exceeded. Please try again later."
+        case 404:
+            return "Release not found for \(repo)"
+        default:
+            return "GitHub API returned status \(statusCode)"
+        }
+    }
+
+    private func buildDownloadURL(repo: String, tagName: String, assetPattern: String) -> String {
+        var url = "https://github.com/\(repo)/releases/download/\(tagName)/" + assetPattern
+        url = url.replacingOccurrences(of: "{version}", with: tagName)
+
+        #if arch(arm64)
+            let standardArch = "aarch64"
+            let shortArch = "arm64"
+        #elseif arch(x86_64)
+            let standardArch = "x86_64"
+            let shortArch = "x64"
+        #else
+            let standardArch = "unknown"
+            let shortArch = "unknown"
+        #endif
+
+        url = url.replacingOccurrences(of: "{arch}", with: standardArch)
+        url = url.replacingOccurrences(of: "{short-arch}", with: shortArch)
+
+        return url
+    }
+}

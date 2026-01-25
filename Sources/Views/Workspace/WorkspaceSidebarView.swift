@@ -99,6 +99,13 @@ struct WorkspaceSidebarView: View {
             .disabled(selectedWorkspace == nil)
 
             Spacer()
+
+            Button {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            } label: {
+                Image(systemName: "gear")
+            }
+            .buttonStyle(.borderless)
         }
         .padding(12)
         .sheet(isPresented: $showingAddRepository) {
