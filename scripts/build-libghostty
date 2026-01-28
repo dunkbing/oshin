@@ -20,7 +20,7 @@ for cmd in git zig lipo; do
 done
 
 # Ensure submodule is set up
-if [ ! -d "${GHOSTTY_DIR}/.git" ]; then
+if [ ! -e "${GHOSTTY_DIR}/.git" ]; then
     echo "Ghostty submodule not found. Running setup-ghostty.sh..."
     "${ROOT_DIR}/scripts/setup-ghostty.sh"
 fi
