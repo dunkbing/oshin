@@ -108,12 +108,17 @@ class AgentSession: ObservableObject {
     @Published private(set) var authMethods: [AuthMethod] = []
     @Published private(set) var configOptions: [SessionConfigOption] = []
 
+    // Version update state
+    @Published private(set) var needsUpdate: Bool = false
+    @Published private(set) var versionInfo: AgentVersionInfo?
+
     // MARK: - Properties
 
     let agentName: String
     private(set) var sessionId: SessionId?
     private var acpClient: ACPClient?
     private var notificationTask: Task<Void, Never>?
+    private var versionCheckTask: Task<Void, Never>?
     private var currentIterationId: String?
 
     private let fileSystemDelegate = AgentFileSystemDelegate()
@@ -137,6 +142,7 @@ class AgentSession: ObservableObject {
 
     deinit {
         notificationTask?.cancel()
+        versionCheckTask?.cancel()
     }
 
     // MARK: - Session Lifecycle
@@ -197,6 +203,9 @@ class AgentSession: ObservableObject {
             sessionState = .ready
             logger.info("Session started: \(sessionResponse.sessionId.value)")
 
+            // Check for agent version updates
+            startVersionCheck()
+
         } catch {
             sessionState = .error(error.localizedDescription)
             await client.terminate()
@@ -208,6 +217,8 @@ class AgentSession: ObservableObject {
     func close() async {
         notificationTask?.cancel()
         notificationTask = nil
+        versionCheckTask?.cancel()
+        versionCheckTask = nil
 
         if let client = acpClient {
             await client.terminate()
@@ -322,6 +333,35 @@ class AgentSession: ObservableObject {
                 await handleNotification(notification)
             }
         }
+    }
+
+    private func startVersionCheck() {
+        versionCheckTask = Task { [weak self] in
+            guard let self = self else { return }
+            let info = await AgentVersionChecker.shared.checkVersion(for: self.agentName)
+            await MainActor.run {
+                self.versionInfo = info
+                if let currentVersion = info.current {
+                    if info.isOutdated, let latestVersion = info.latest {
+                        self.needsUpdate = true
+                        self.addSystemMessage(
+                            "\(self.agentName) v\(currentVersion) (update available: v\(latestVersion))"
+                        )
+                    } else {
+                        self.addSystemMessage("\(self.agentName) v\(currentVersion)")
+                    }
+                }
+            }
+        }
+    }
+
+    private func addSystemMessage(_ content: String) {
+        let message = MessageItem(
+            role: .system,
+            content: content
+        )
+        messages.append(message)
+        trimMessagesIfNeeded()
     }
 
     private func handleNotification(_ notification: JSONRPCNotification) async {

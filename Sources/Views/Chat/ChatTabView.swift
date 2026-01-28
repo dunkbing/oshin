@@ -8,48 +8,50 @@
 import SwiftUI
 
 struct ChatTabView: View {
-    let repositoryPath: String
+    let chatSession: ChatSession
+    let sessionManager: ChatSessionManager
+    let isSelected: Bool
 
-    @AppStorage("defaultACPAgent") private var defaultACPAgent = "claude"
-
-    @StateObject private var session: AgentSession
+    @StateObject private var agentSession: AgentSession
     @State private var inputText: String = ""
-    @State private var selectedAgentId: String
     @State private var showingError: Bool = false
     @State private var errorMessage: String = ""
     @State private var isInitializing: Bool = false
+    @FocusState private var isInputFocused: Bool
 
-    init(repositoryPath: String) {
-        self.repositoryPath = repositoryPath
-        let defaultAgent = UserDefaults.standard.string(forKey: "defaultACPAgent") ?? "claude"
-        _selectedAgentId = State(initialValue: defaultAgent)
-        _session = StateObject(wrappedValue: AgentSession(agentName: defaultAgent))
+    init(chatSession: ChatSession, sessionManager: ChatSessionManager, isSelected: Bool) {
+        self.chatSession = chatSession
+        self.sessionManager = sessionManager
+        self.isSelected = isSelected
+
+        // Get or create agent session
+        if let existing = sessionManager.getAgentSession(for: chatSession.id) {
+            _agentSession = StateObject(wrappedValue: existing)
+        } else {
+            let newSession = AgentSession(agentName: chatSession.agentId)
+            _agentSession = StateObject(wrappedValue: newSession)
+        }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with agent selector
-            headerSection
-
-            Divider()
-
             // Messages area
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(session.messages) { message in
-                            MessageRowView(message: message, agentName: selectedAgentId)
+                        ForEach(agentSession.messages) { message in
+                            MessageRowView(message: message, agentName: chatSession.agentId)
                                 .id(message.id)
                         }
 
-                        if session.isStreaming, let thought = session.currentThought {
+                        if agentSession.isStreaming, let thought = agentSession.currentThought {
                             ThoughtBubbleView(thought: thought)
                         }
                     }
                     .padding(.vertical, 12)
                 }
-                .onChange(of: session.messages.count) { _, _ in
-                    if let lastMessage = session.messages.last {
+                .onChange(of: agentSession.messages.count) { _, _ in
+                    if let lastMessage = agentSession.messages.last {
                         withAnimation {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
@@ -72,85 +74,42 @@ struct ChatTabView: View {
         } message: {
             Text(errorMessage)
         }
-        .onDisappear {
-            Task {
-                await session.close()
+        .onChange(of: isSelected) { _, newValue in
+            if newValue {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isInputFocused = true
+                }
+            }
+        }
+        .onAppear {
+            if isSelected {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isInputFocused = true
+                }
             }
         }
     }
 
-    // MARK: - Header Section
+    // MARK: - Input Toolbar
 
-    private var headerSection: some View {
+    private var inputToolbar: some View {
         HStack(spacing: 12) {
-            // Agent selector
-            Menu {
-                ForEach(AgentRegistry.shared.getEnabledAgents(), id: \.id) { agent in
-                    Button {
-                        switchAgent(to: agent.id)
-                    } label: {
-                        HStack {
-                            Text(agent.name)
-                            if agent.id == selectedAgentId {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    if let metadata = AgentRegistry.shared.getMetadata(for: selectedAgentId) {
-                        AgentIconView(iconType: metadata.iconType, size: 16)
-                    }
-                    Text(selectedAgentName)
-                        .font(.system(size: 13, weight: .medium))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10))
-                }
-                .foregroundStyle(.primary)
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-
             // Status indicator
             statusIndicator
 
             Spacer()
 
             // Config options (if available)
-            if !session.configOptions.isEmpty {
+            if !agentSession.configOptions.isEmpty {
                 configOptionsMenu
             }
-
-            // Stop button when streaming
-            if session.isStreaming {
-                Button {
-                    Task {
-                        await session.cancelCurrentPrompt()
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "stop.fill")
-                        Text("Stop")
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
-                }
-                .buttonStyle(.bordered)
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-
-    private var selectedAgentName: String {
-        AgentRegistry.shared.getMetadata(for: selectedAgentId)?.name ?? selectedAgentId
     }
 
     @ViewBuilder
     private var statusIndicator: some View {
         HStack(spacing: 6) {
-            switch session.sessionState {
+            switch agentSession.sessionState {
             case .idle:
                 Circle()
                     .fill(.gray)
@@ -179,15 +138,18 @@ struct ChatTabView: View {
 
     @ViewBuilder
     private var configOptionsMenu: some View {
-        ForEach(Array(session.configOptions.enumerated()), id: \.element.id.value) { _, option in
-            ConfigOptionMenuView(option: option, session: session)
+        ForEach(Array(agentSession.configOptions.enumerated()), id: \.element.id.value) { _, option in
+            ConfigOptionMenuView(option: option, session: agentSession)
         }
     }
 
     // MARK: - Input Section
 
     private var inputSection: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
+            // Toolbar with config options
+            inputToolbar
+
             // Text input row
             HStack(spacing: 10) {
                 // Attachment button
@@ -205,22 +167,29 @@ struct ChatTabView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
                     .lineLimit(1...5)
+                    .focused($isInputFocused)
                     .onSubmit {
-                        if !inputText.isEmpty && !session.isStreaming {
+                        if !inputText.isEmpty && !agentSession.isStreaming {
                             sendMessage()
                         }
                     }
 
-                // Send button
+                // Send/Stop button
                 Button {
-                    sendMessage()
+                    if agentSession.isStreaming {
+                        Task {
+                            await agentSession.cancelCurrentPrompt()
+                        }
+                    } else {
+                        sendMessage()
+                    }
                 } label: {
-                    Image(systemName: session.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
+                    Image(systemName: agentSession.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(canSend ? Color.accentColor : Color.secondary)
+                        .foregroundStyle(agentSession.isStreaming ? .red : (canSend ? Color.accentColor : Color.secondary))
                 }
                 .buttonStyle(.plain)
-                .disabled(!canSend && !session.isStreaming)
+                .disabled(!canSend && !agentSession.isStreaming)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -228,36 +197,29 @@ struct ChatTabView: View {
             .cornerRadius(10)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
     }
 
     private var canSend: Bool {
-        !inputText.isEmpty && session.sessionState.isReady && !session.isStreaming
+        !inputText.isEmpty && agentSession.sessionState.isReady && !agentSession.isStreaming
     }
 
     // MARK: - Actions
 
     private func startSession() async {
-        guard !session.isActive else { return }
+        guard !agentSession.isActive else { return }
         isInitializing = true
+
+        // Register agent session with manager
+        sessionManager.setAgentSession(agentSession, for: chatSession.id)
+
         do {
-            try await session.start(workingDirectory: repositoryPath)
+            try await agentSession.start(workingDirectory: chatSession.repositoryPath)
         } catch {
             errorMessage = error.localizedDescription
             showingError = true
         }
         isInitializing = false
-    }
-
-    private func switchAgent(to agentId: String) {
-        guard agentId != selectedAgentId else { return }
-        selectedAgentId = agentId
-
-        Task {
-            await session.close()
-            // Create new session with different agent would require recreating the view
-            // For now, just restart with same session object after updating agent name
-        }
     }
 
     private func sendMessage() {
@@ -267,7 +229,7 @@ struct ChatTabView: View {
 
         Task {
             do {
-                try await session.sendMessage(content: message)
+                try await agentSession.sendMessage(content: message)
             } catch {
                 errorMessage = error.localizedDescription
                 showingError = true

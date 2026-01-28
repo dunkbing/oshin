@@ -120,7 +120,7 @@ struct RepositoryDetailView: View {
             // Tab content
             switch selectedTab {
             case .chat:
-                ChatTabView(repositoryPath: repository.path)
+                ChatContainerView(workingDirectory: repository.path)
             case .terminal:
                 TerminalTabView(workingDirectory: repository.path, ghosttyApp: ghosttyApp)
             case .git:
@@ -140,6 +140,263 @@ struct RepositoryDetailView: View {
             gitService.setRepositoryPath(newPath)
             selectedFile = nil
         }
+    }
+}
+
+// MARK: - Chat Container View
+
+struct ChatContainerView: View {
+    let workingDirectory: String
+
+    @ObservedObject private var sessionManager = ChatSessionManager.shared
+    @State private var selectedSessionId: UUID?
+    @State private var showingAgentPicker = false
+
+    @AppStorage("defaultACPAgent") private var defaultACPAgent = "claude"
+
+    private var sessions: [ChatSession] {
+        sessionManager.getSessions(for: workingDirectory)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab bar
+            ChatTabBar(
+                sessions: sessions,
+                selectedSessionId: $selectedSessionId,
+                showingAgentPicker: $showingAgentPicker,
+                onClose: { session in
+                    closeSession(session)
+                },
+                onSelect: { agentId in
+                    createNewSession(agentId: agentId)
+                }
+            )
+
+            Divider()
+
+            // Chat content
+            if sessions.isEmpty {
+                chatEmptyState
+            } else {
+                ZStack {
+                    ForEach(sessions) { session in
+                        let isSelected = selectedSessionId == session.id
+                        ChatTabView(
+                            chatSession: session,
+                            sessionManager: sessionManager,
+                            isSelected: isSelected
+                        )
+                        .opacity(isSelected ? 1 : 0)
+                        .allowsHitTesting(isSelected)
+                        .zIndex(isSelected ? 1 : 0)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            if sessions.isEmpty {
+                createNewSession(agentId: defaultACPAgent)
+            } else if selectedSessionId == nil {
+                selectedSessionId = sessions.first?.id
+            }
+        }
+    }
+
+    @State private var showingEmptyStatePopover = false
+
+    private var chatEmptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "bubble.left.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.secondary)
+
+            Text("No Chat Sessions")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Button {
+                showingEmptyStatePopover = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("New Chat")
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.blue, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showingEmptyStatePopover, arrowEdge: .bottom) {
+                AgentPickerPopover { agentId in
+                    createNewSession(agentId: agentId)
+                    showingEmptyStatePopover = false
+                }
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func createNewSession(agentId: String) {
+        let session = sessionManager.createSession(for: workingDirectory, agentId: agentId)
+        selectedSessionId = session.id
+    }
+
+    private func closeSession(_ session: ChatSession) {
+        let wasSelected = selectedSessionId == session.id
+        sessionManager.removeSession(session)
+
+        if wasSelected {
+            selectedSessionId = sessions.first?.id
+        }
+    }
+}
+
+// MARK: - Chat Tab Bar
+
+struct ChatTabBar: View {
+    let sessions: [ChatSession]
+    @Binding var selectedSessionId: UUID?
+    @Binding var showingAgentPicker: Bool
+    let onClose: (ChatSession) -> Void
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(sessions) { session in
+                        ChatTabButton(
+                            session: session,
+                            isSelected: selectedSessionId == session.id,
+                            onSelect: { selectedSessionId = session.id },
+                            onClose: { onClose(session) }
+                        )
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
+
+            Spacer()
+
+            // New tab button with popover
+            Button {
+                showingAgentPicker = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 12))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 8)
+            .popover(isPresented: $showingAgentPicker, arrowEdge: .bottom) {
+                AgentPickerPopover { agentId in
+                    onSelect(agentId)
+                    showingAgentPicker = false
+                }
+            }
+        }
+        .frame(height: 36)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+// MARK: - Chat Tab Button
+
+struct ChatTabButton: View {
+    @ObservedObject var session: ChatSession
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onClose: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 6) {
+                // Close button
+                Button {
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .frame(width: 14, height: 14)
+                        .background(
+                            Circle()
+                                .fill(isHovering ? Color.primary.opacity(0.1) : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovering || isSelected ? 1 : 0)
+
+                // Agent icon
+                if let metadata = AgentRegistry.shared.getMetadata(for: session.agentId) {
+                    AgentIconView(iconType: metadata.iconType, size: 14)
+                }
+
+                Text(session.title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 100)
+            }
+            .padding(.leading, 6)
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(
+                        isSelected
+                            ? Color.primary.opacity(0.1) : (isHovering ? Color.primary.opacity(0.05) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .help(session.title)
+    }
+}
+
+// MARK: - Agent Picker Popover
+
+struct AgentPickerPopover: View {
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(AgentRegistry.shared.getEnabledAgents(), id: \.id) { agent in
+                Button {
+                    onSelect(agent.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        AgentIconView(iconType: agent.iconType, size: 16)
+
+                        Text(agent.name)
+                            .font(.system(size: 12))
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(Color.primary.opacity(0.001))
+                .cornerRadius(4)
+            }
+        }
+        .padding(8)
+        .frame(width: 160)
     }
 }
 
