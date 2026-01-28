@@ -242,7 +242,7 @@ actor ACPProcessManager {
     private func startReadingStderr() {
         guard let stderr = stderrPipe?.fileHandleForReading else { return }
 
-        stderr.readabilityHandler = { [weak self] handle in
+        stderr.readabilityHandler = { [] handle in
             let data = handle.availableData
             guard !data.isEmpty else {
                 handle.readabilityHandler = nil

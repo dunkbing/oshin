@@ -5,6 +5,11 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+
+        // Add atexit handler to catch unexpected terminations
+        atexit {
+            debugPrint("[DEBUG] atexit handler called - app is exiting!")
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -12,7 +17,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        debugPrint("[DEBUG] applicationShouldTerminateAfterLastWindowClosed called!")
+        debugPrint("[DEBUG] Window count: \(NSApp.windows.count)")
+        for (i, window) in NSApp.windows.enumerated() {
+            debugPrint("[DEBUG] Window \(i): \(window), isVisible: \(window.isVisible), title: \(window.title)")
+        }
+        return true
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        debugPrint("[DEBUG] applicationWillTerminate called!")
     }
 }
 

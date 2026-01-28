@@ -9,7 +9,7 @@ import Foundation
 import os.log
 
 enum ShellEnvironment {
-    private static var cachedEnvironment: [String: String]?
+    nonisolated(unsafe) private static var cachedEnvironment: [String: String]?
     private static let cacheLock = NSLock()
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",

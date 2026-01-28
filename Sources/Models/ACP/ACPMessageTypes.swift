@@ -115,7 +115,7 @@ enum RequestId: Codable, Hashable, CustomStringConvertible, Sendable {
     }
 }
 
-struct AnyCodable: Codable {
+struct AnyCodable: Codable, @unchecked Sendable {
     let value: Any
 
     init(_ value: Any) {

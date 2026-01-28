@@ -38,7 +38,7 @@ struct ChatTabView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(session.messages) { message in
-                            MessageRowView(message: message)
+                            MessageRowView(message: message, agentName: selectedAgentId)
                                 .id(message.id)
                         }
 
@@ -335,45 +335,225 @@ struct ConfigOptionMenuView: View {
 
 struct MessageRowView: View {
     let message: MessageItem
+    let agentName: String?
+
+    @State private var showCopyConfirmation = false
+
+    init(message: MessageItem, agentName: String? = nil) {
+        self.message = message
+        self.agentName = agentName
+    }
+
+    private var shouldShowMessage: Bool {
+        guard message.role == .agent else { return true }
+        return !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Message header
-            HStack {
-                Text(message.role == .user ? "You" : message.role == .agent ? "Agent" : "System")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(message.role == .user ? .blue : .primary)
-
-                Spacer()
-
-                Text(message.timestamp, style: .time)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
+            // Agent header
+            if message.role == .agent, shouldShowMessage {
+                HStack(spacing: 6) {
+                    if let name = agentName,
+                        let metadata = AgentRegistry.shared.getMetadata(for: name)
+                    {
+                        AgentIconView(iconType: metadata.iconType, size: 16)
+                    }
+                    Text(agentDisplayName)
+                        .font(.system(size: 12, weight: .semibold))
+                }
             }
 
             // Message content
-            if !message.content.isEmpty {
-                Text(message.content)
-                    .font(.system(size: 13))
-                    .textSelection(.enabled)
+            if message.role == .user {
+                userMessageBubble
+            } else if message.role == .agent && shouldShowMessage {
+                agentMessageContent
+            } else if message.role == .system {
+                systemMessage
             }
 
-            // Tool calls
-            ForEach(message.toolCalls, id: \.toolCallId) { toolCall in
-                ToolCallView(toolCall: toolCall)
-            }
-
-            // Execution time for completed agent messages
-            if message.role == .agent, message.isComplete, let time = message.executionTime {
-                Text(String(format: "%.1fs", time))
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+            // Tool calls (for agent messages)
+            if message.role == .agent && !message.toolCalls.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(message.toolCalls, id: \.toolCallId) { toolCall in
+                        ToolCallView(toolCall: toolCall)
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(message.role == .user ? Color.blue.opacity(0.05) : Color.clear)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+    }
+
+    private var agentDisplayName: String {
+        if let name = agentName, let meta = AgentRegistry.shared.getMetadata(for: name) {
+            return meta.name
+        }
+        return agentName ?? "Agent"
+    }
+
+    // MARK: - User Message Bubble
+
+    private var userMessageBubble: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(message.content)
+                .font(.system(size: 13))
+                .textSelection(.enabled)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
+                )
+                .contextMenu {
+                    Button {
+                        copyMessage()
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+                }
+
+            // Timestamp and copy button
+            HStack(spacing: 8) {
+                Text(DateFormatters.shortTime.string(from: message.timestamp))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+
+                Button(action: copyMessage) {
+                    Image(systemName: showCopyConfirmation ? "checkmark.circle.fill" : "doc.on.doc")
+                        .font(.system(size: 10))
+                        .foregroundColor(showCopyConfirmation ? .green : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: 400, alignment: .trailing)
+    }
+
+    // MARK: - Agent Message Content
+
+    private var agentMessageContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Parse and render content with code blocks
+            let segments = CodeBlockParser.segments(message.content)
+
+            ForEach(segments) { segment in
+                switch segment {
+                case .text(let text):
+                    Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(.system(size: 13))
+                        .textSelection(.enabled)
+
+                case .code(let block):
+                    CodeBlockView(block: block)
+                }
+            }
+
+            // Footer with timestamp and execution time
+            HStack(spacing: 8) {
+                Text(DateFormatters.shortTime.string(from: message.timestamp))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+
+                if message.isComplete, let time = message.executionTime {
+                    Text(DurationFormatter.short(time))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    // MARK: - System Message
+
+    private var systemMessage: some View {
+        Text(message.content)
+            .font(.system(size: 11))
+            .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func copyMessage() {
+        Clipboard.copy(message.content)
+        withAnimation {
+            showCopyConfirmation = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                showCopyConfirmation = false
+            }
+        }
+    }
+}
+
+// MARK: - Code Block View
+
+struct CodeBlockView: View {
+    let block: CodeBlock
+
+    @State private var isHovering = false
+    @State private var showCopied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with language
+            if let language = block.language {
+                HStack {
+                    Text(language)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button {
+                        copyCode()
+                    } label: {
+                        Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 11))
+                            .foregroundStyle(showCopied ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(isHovering || showCopied ? 1 : 0)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.secondary.opacity(0.1))
+            }
+
+            // Code content
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(block.code)
+                    .font(.system(size: 12, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(12)
+            }
+        }
+        .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
+        )
+        .onHover { hovering in
+            isHovering = hovering
+        }
+    }
+
+    private func copyCode() {
+        Clipboard.copy(block.code)
+        withAnimation {
+            showCopied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                showCopied = false
+            }
+        }
     }
 }
 
