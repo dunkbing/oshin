@@ -1,0 +1,347 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="AgentMonitor — Monitor AI Coding Agents on macOS">
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="logo">AgentMonitor</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="https://github.com" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-eyebrow">macOS App</p>
+      <h1>Monitor your AI coding agents</h1>
+      <p class="hero-desc">
+        A unified interface to watch Claude, Codex, and Gemini work on your code.
+        Manage Git worktrees, review changes, and interact with agents.
+      </p>
+      <div class="hero-actions">
+        <a href="#" class="btn btn-primary">Download for macOS</a>
+        <a href="#features" class="btn btn-ghost">Learn more</a>
+      </div>
+    </div>
+
+    <!-- Screenshot placeholder -->
+    <div class="screenshot-wrapper">
+      <div class="screenshot-placeholder">
+        <span>App Screenshot</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <h2>Built for developers who work with AI</h2>
+
+    <div class="features-grid">
+      <div class="feature">
+        <h3>Multi-Agent Monitoring</h3>
+        <p>Watch multiple AI agents work simultaneously with real-time status updates.</p>
+      </div>
+      <div class="feature">
+        <h3>Git Worktree Management</h3>
+        <p>Each agent gets its own isolated workspace. Manage branches in parallel.</p>
+      </div>
+      <div class="feature">
+        <h3>Integrated Terminal</h3>
+        <p>Run commands, view build output, and interact with agents directly.</p>
+      </div>
+      <div class="feature">
+        <h3>Diff Visualization</h3>
+        <p>Review agent modifications with unified and split diff views.</p>
+      </div>
+      <div class="feature">
+        <h3>Chat Interface</h3>
+        <p>Send instructions and guide agent work through direct communication.</p>
+      </div>
+      <div class="feature">
+        <h3>Workspace Organization</h3>
+        <p>Group repositories into workspaces. Switch contexts instantly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Second screenshot -->
+  <section class="showcase">
+    <div class="screenshot-placeholder large">
+      <span>Feature Screenshot</span>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <h2>Ready to try it?</h2>
+    <p>Download AgentMonitor and take control of your AI coding workflow.</p>
+    <a href="#" class="btn btn-primary">Download for macOS</a>
+    <span class="cta-note">Requires macOS 14.0+</span>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>AgentMonitor</span>
+    <div class="footer-links">
+      <a href="#">GitHub</a>
+      <a href="#">Documentation</a>
+    </div>
+  </footer>
+</Layout>
+
+<style>
+  /* Base */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Navigation */
+  .nav {
+    padding: 1.5rem 2rem;
+  }
+
+  .nav-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .nav-links a {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover {
+    color: var(--text-primary);
+  }
+
+  /* Hero */
+  .hero {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 6rem 2rem 4rem;
+    text-align: center;
+  }
+
+  .hero-content {
+    max-width: 600px;
+    margin: 0 auto 4rem;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  .hero-desc {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .btn-ghost {
+    color: var(--text-secondary);
+  }
+
+  .btn-ghost:hover {
+    color: var(--text-primary);
+  }
+
+  /* Screenshot placeholders */
+  .screenshot-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .screenshot-placeholder {
+    aspect-ratio: 16/10;
+    background: var(--bg-elevated);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .screenshot-placeholder.large {
+    aspect-ratio: 16/9;
+  }
+
+  /* Features */
+  .features {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  .features h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--text-primary);
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .feature h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .feature p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  /* Showcase */
+  .showcase {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem 6rem;
+  }
+
+  /* CTA */
+  .cta {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+    text-align: center;
+  }
+
+  .cta h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .cta p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-note {
+    display: block;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* Footer */
+  .footer {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover {
+    color: var(--text-primary);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+    }
+
+    .footer {
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+  }
+</style>
