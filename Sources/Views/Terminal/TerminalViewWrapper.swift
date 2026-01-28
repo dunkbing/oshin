@@ -11,6 +11,7 @@ import SwiftUI
 
 // MARK: - Terminal View Coordinator
 
+@MainActor
 class TerminalViewCoordinator {
     let sessionId: UUID
     let onProcessExit: () -> Void
@@ -25,11 +26,20 @@ class TerminalViewCoordinator {
         stopMonitoring()
         // Poll for process exit every 500ms
         exitCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
-            [weak self, weak terminal] _ in
+            [weak self, weak terminal] timer in
+            // Stop immediately if coordinator or terminal is deallocated
+            guard self != nil, terminal != nil else {
+                debugPrint("[Timer] Stopping - coordinator or terminal deallocated")
+                timer.invalidate()
+                return
+            }
+
+            debugPrint("[Timer] Checking process exit...")
             Task { @MainActor [weak self, weak terminal] in
                 guard let self = self, let terminal = terminal else { return }
 
                 if terminal.processExited {
+                    debugPrint("[Timer] Process exited, stopping timer")
                     self.exitCheckTimer?.invalidate()
                     self.exitCheckTimer = nil
                     self.onProcessExit()
@@ -42,10 +52,6 @@ class TerminalViewCoordinator {
     func stopMonitoring() {
         exitCheckTimer?.invalidate()
         exitCheckTimer = nil
-    }
-
-    deinit {
-        stopMonitoring()
     }
 }
 

@@ -12,7 +12,6 @@ let package = Package(
         .package(url: "https://github.com/ibrahimcetin/SwiftGitX.git", from: "0.4.0"),
     ],
     targets: [
-        // System library target for libghostty C headers
         .systemLibrary(
             name: "GhosttyKit",
             path: "Vendor/ghostty/include"
@@ -25,7 +24,7 @@ let package = Package(
             ],
             path: "Sources",
             swiftSettings: [
-                .swiftLanguageMode(.v5),  // Use Swift 5 mode to avoid strict concurrency errors
+                .swiftLanguageMode(.v5)
             ],
             linkerSettings: [
                 // Link libghostty static library
