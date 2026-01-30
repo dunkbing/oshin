@@ -346,3 +346,136 @@ struct DiffEmptyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+// MARK: - Image Diff View
+
+struct ImageDiffView: View {
+    let oldImageData: Data?
+    let newImageData: Data?
+    let changeType: CommitFileChange.FileChangeType
+    let viewMode: DiffViewMode
+
+    var body: some View {
+        Group {
+            switch viewMode {
+            case .split:
+                // Side by side
+                HStack(spacing: 16) {
+                    // Old image
+                    if changeType != .added {
+                        ImagePanel(
+                            label: "Before",
+                            imageData: oldImageData,
+                            borderColor: .red
+                        )
+                    }
+
+                    // New image
+                    if changeType != .deleted {
+                        ImagePanel(
+                            label: "After",
+                            imageData: newImageData,
+                            borderColor: .green
+                        )
+                    }
+                }
+            case .unified:
+                // Top / bottom
+                VStack(spacing: 16) {
+                    // Old image
+                    if changeType != .added {
+                        ImagePanel(
+                            label: "Before",
+                            imageData: oldImageData,
+                            borderColor: .red
+                        )
+                    }
+
+                    // New image
+                    if changeType != .deleted {
+                        ImagePanel(
+                            label: "After",
+                            imageData: newImageData,
+                            borderColor: .green
+                        )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.primary.opacity(0.02))
+    }
+}
+
+// MARK: - Image Panel
+
+struct ImagePanel: View {
+    let label: String
+    let imageData: Data?
+    let borderColor: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            if let data = imageData, let nsImage = NSImage(data: data) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: 300)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(borderColor.opacity(0.5), lineWidth: 2)
+                    )
+            } else {
+                ImagePlaceholder(message: "Image not available")
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Image Placeholder
+
+struct ImagePlaceholder: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "photo")
+                .font(.system(size: 32))
+                .foregroundStyle(.tertiary)
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(width: 200, height: 150)
+        .background(Color.primary.opacity(0.05))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Binary File Placeholder
+
+struct BinaryFilePlaceholder: View {
+    var body: some View {
+        HStack {
+            Spacer()
+            VStack(spacing: 8) {
+                Image(systemName: "doc.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.secondary)
+                Text("Binary file")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(20)
+            Spacer()
+        }
+        .background(Color.primary.opacity(0.02))
+    }
+}

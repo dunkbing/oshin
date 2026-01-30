@@ -48,6 +48,10 @@ struct CommitFileChange: Identifiable, Equatable {
     let additions: Int
     let deletions: Int
     let diffOutput: String
+    let isBinary: Bool
+    let isImage: Bool
+    let oldImageData: Data?
+    let newImageData: Data?
 
     enum FileChangeType: String {
         case added = "A"
@@ -75,6 +79,15 @@ struct CommitFileChange: Identifiable, Equatable {
             case .copied: return "doc.on.doc.fill"
             }
         }
+    }
+
+    static let imageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp", "ico", "heic", "heif",
+    ]
+
+    static func isImageFile(_ path: String) -> Bool {
+        let ext = (path as NSString).pathExtension.lowercased()
+        return imageExtensions.contains(ext)
     }
 }
 
@@ -283,11 +296,34 @@ class GitService: ObservableObject {
                 default: changeType = .modified
                 }
 
-                // Build diff output for this file
+                let filePath = delta.newFile.path
+                let isBinary = delta.flags.contains(.binary)
+                let isImage = CommitFileChange.isImageFile(filePath)
+
+                // Load image data if it's an image file
+                var oldImageData: Data?
+                var newImageData: Data?
+
+                if isImage {
+                    // Load old image (for modified/deleted)
+                    if delta.type != .added && delta.oldFile.id != .zero {
+                        if let oldBlob: SwiftGitX.Blob = try? repository.show(id: delta.oldFile.id) {
+                            oldImageData = oldBlob.content
+                        }
+                    }
+
+                    // Load new image (for modified/added)
+                    if delta.type != .deleted && delta.newFile.id != .zero {
+                        if let newBlob: SwiftGitX.Blob = try? repository.show(id: delta.newFile.id) {
+                            newImageData = newBlob.content
+                        }
+                    }
+                }
+
+                // Build diff output for this file (skip for binary/image)
                 var diffOutput = ""
-                if index < diff.patches.count {
+                if !isBinary && !isImage && index < diff.patches.count {
                     let patch = diff.patches[index]
-                    let filePath = delta.newFile.path
 
                     diffOutput += "diff --git a/\(filePath) b/\(filePath)\n"
 
@@ -332,12 +368,16 @@ class GitService: ObservableObject {
 
                 files.append(
                     CommitFileChange(
-                        id: delta.newFile.path,
-                        path: delta.newFile.path,
+                        id: filePath,
+                        path: filePath,
                         changeType: changeType,
                         additions: additions,
                         deletions: deletions,
-                        diffOutput: diffOutput
+                        diffOutput: diffOutput,
+                        isBinary: isBinary,
+                        isImage: isImage,
+                        oldImageData: oldImageData,
+                        newImageData: newImageData
                     ))
             }
 

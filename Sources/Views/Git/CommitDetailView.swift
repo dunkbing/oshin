@@ -202,9 +202,9 @@ struct CommitFileRow: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 12)
 
-                    Image(systemName: "doc.text")
+                    Image(systemName: file.isImage ? "photo" : (file.isBinary ? "doc.fill" : "doc.text"))
                         .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(file.isImage ? .blue : .secondary)
 
                     Text(file.path)
                         .font(.system(size: 13))
@@ -241,8 +241,19 @@ struct CommitFileRow: View {
             .background(Color.primary.opacity(0.02))
 
             // Expanded diff content
-            if isExpanded && !file.diffOutput.isEmpty {
-                CommitFileDiffView(diffOutput: file.diffOutput, fontSize: fontSize, viewMode: viewMode)
+            if isExpanded {
+                if file.isImage {
+                    ImageDiffView(
+                        oldImageData: file.oldImageData,
+                        newImageData: file.newImageData,
+                        changeType: file.changeType,
+                        viewMode: viewMode
+                    )
+                } else if file.isBinary {
+                    BinaryFilePlaceholder()
+                } else if !file.diffOutput.isEmpty {
+                    CommitFileDiffView(diffOutput: file.diffOutput, fontSize: fontSize, viewMode: viewMode)
+                }
             }
 
             Divider()
