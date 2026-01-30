@@ -4,12 +4,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "agentmonitor",
+    name: "oosin",
     platforms: [
         .macOS(.v14)
     ],
     dependencies: [
-        .package(url: "https://github.com/ibrahimcetin/SwiftGitX.git", from: "0.4.0"),
+        .package(path: "Vendor/SwiftGitX"),
     ],
     targets: [
         .systemLibrary(

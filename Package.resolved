@@ -1,5 +1,5 @@
 {
-  "originHash" : "1fe798b64734a276f0821808e148f2765a538843be7b0aaa18d0df5015201e86",
+  "originHash" : "669bde153f06fc5749bad787f24923b246815dcb6d3e7d068211b43eb020c902",
   "pins" : [
     {
       "identity" : "libgit2",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "52287b0914f300f916b58fec80e13d8dd8f6824f",
         "version" : "1.9.2"
-      }
-    },
-    {
-      "identity" : "swiftgitx",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ibrahimcetin/SwiftGitX.git",
-      "state" : {
-        "revision" : "fcfb71e3dcbbaa70d120b98b7477ce173074aec3",
-        "version" : "0.4.0"
       }
     }
   ],

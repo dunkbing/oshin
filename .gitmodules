@@ -1,3 +1,6 @@
 [submodule "Vendor/ghostty"]
 	path = Vendor/ghostty
 	url = https://github.com/ghostty-org/ghostty
+[submodule "Vendor/SwiftGitX"]
+	path = Vendor/SwiftGitX
+	url = https://github.com/dunkbing/SwiftGitX.git
