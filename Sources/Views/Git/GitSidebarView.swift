@@ -183,13 +183,20 @@ struct GitHistoryTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             GitHistoryHeader()
-
             Divider()
-
-            // Commit log
             GitLogView()
+            if let totalCount = gitService.totalCommitCount {
+                Divider()
+                HStack {
+                    Spacer()
+                    Text("\(totalCount) commits")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.vertical, 6)
+            }
         }
     }
 }

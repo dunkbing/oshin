@@ -100,6 +100,7 @@ class GitService: ObservableObject {
     @Published private(set) var commitLog: [CommitInfo] = []
     @Published private(set) var isLoadingLog = false
     @Published private(set) var hasMoreCommits = true
+    @Published private(set) var totalCommitCount: Int?
     @Published private(set) var selectedCommitDetail: CommitDetail?
     @Published private(set) var isLoadingCommitDetail = false
     @Published var selectedCommitId: String?
@@ -116,6 +117,7 @@ class GitService: ObservableObject {
         selectedFileDiff = ""
         commitLog = []
         hasMoreCommits = true
+        totalCommitCount = nil
         selectedCommitId = nil
         selectedCommitDetail = nil
         Task {
@@ -132,14 +134,35 @@ class GitService: ObservableObject {
         defer { isLoadingLog = false }
 
         do {
-            let commits = try await fetchCommits(skip: 0, limit: logPageSize)
+            async let commitsTask = fetchCommits(skip: 0, limit: logPageSize)
+            async let countTask = fetchTotalCommitCount()
+
+            let (commits, count) = try await (commitsTask, countTask)
+
             commitLog = commits
             hasMoreCommits = commits.count >= logPageSize
+            totalCommitCount = count
         } catch {
             print("Failed to load commit log: \(error)")
             commitLog = []
             hasMoreCommits = false
+            totalCommitCount = nil
         }
+    }
+
+    private func fetchTotalCommitCount() async throws -> Int {
+        let path = repositoryPath
+        return try await Task.detached(priority: .utility) {
+            let url = URL(fileURLWithPath: path)
+            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+            let sequence = try repository.log(sorting: .none)
+            var count = 0
+            for _ in sequence {
+                count += 1
+            }
+            return count
+        }.value
     }
 
     func loadMoreCommits() async {
