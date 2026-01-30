@@ -7,6 +7,89 @@
 
 import Foundation
 import SwiftGitX
+import SwiftUI
+
+// MARK: - Commit Info Model
+
+struct CommitInfo: Identifiable, Equatable {
+    let id: String
+    let shortId: String
+    let summary: String
+    let body: String?
+    let authorName: String
+    let authorEmail: String
+    let date: Date
+    let parentIds: [String]
+
+    var authorInitial: String {
+        String(authorName.prefix(1)).uppercased()
+    }
+
+    var relativeDate: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Commit File Change Model
+
+struct CommitFileChange: Identifiable, Equatable {
+    let id: String
+    let path: String
+    let changeType: FileChangeType
+    let additions: Int
+    let deletions: Int
+    let diffOutput: String
+
+    enum FileChangeType: String {
+        case added = "A"
+        case deleted = "D"
+        case modified = "M"
+        case renamed = "R"
+        case copied = "C"
+
+        var color: Color {
+            switch self {
+            case .added: return .green
+            case .deleted: return .red
+            case .modified: return .orange
+            case .renamed: return .blue
+            case .copied: return .purple
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .added: return "plus.circle.fill"
+            case .deleted: return "minus.circle.fill"
+            case .modified: return "pencil.circle.fill"
+            case .renamed: return "arrow.right.circle.fill"
+            case .copied: return "doc.on.doc.fill"
+            }
+        }
+    }
+}
+
+// MARK: - Commit Detail Model
+
+struct CommitDetail: Equatable {
+    let commit: CommitInfo
+    let files: [CommitFileChange]
+    let totalAdditions: Int
+    let totalDeletions: Int
+
+    static func == (lhs: CommitDetail, rhs: CommitDetail) -> Bool {
+        lhs.commit.id == rhs.commit.id
+    }
+}
 
 @MainActor
 class GitService: ObservableObject {
@@ -14,8 +97,15 @@ class GitService: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var isOperationPending = false
     @Published private(set) var selectedFileDiff: String = ""
+    @Published private(set) var commitLog: [CommitInfo] = []
+    @Published private(set) var isLoadingLog = false
+    @Published private(set) var hasMoreCommits = true
+    @Published private(set) var selectedCommitDetail: CommitDetail?
+    @Published private(set) var isLoadingCommitDetail = false
+    @Published var selectedCommitId: String?
 
     private var repositoryPath: String = ""
+    private let logPageSize = 50
 
     var repoPath: String { repositoryPath }
 
@@ -24,9 +114,217 @@ class GitService: ObservableObject {
         repositoryPath = path
         currentStatus = .empty
         selectedFileDiff = ""
+        commitLog = []
+        hasMoreCommits = true
+        selectedCommitId = nil
+        selectedCommitDetail = nil
         Task {
             await reloadStatus()
         }
+    }
+
+    // MARK: - Log
+
+    func loadCommitLog() async {
+        guard !repositoryPath.isEmpty, !isLoadingLog else { return }
+
+        isLoadingLog = true
+        defer { isLoadingLog = false }
+
+        do {
+            let commits = try await fetchCommits(skip: 0, limit: logPageSize)
+            commitLog = commits
+            hasMoreCommits = commits.count >= logPageSize
+        } catch {
+            print("Failed to load commit log: \(error)")
+            commitLog = []
+            hasMoreCommits = false
+        }
+    }
+
+    func loadMoreCommits() async {
+        guard !repositoryPath.isEmpty, !isLoadingLog, hasMoreCommits else { return }
+
+        isLoadingLog = true
+        defer { isLoadingLog = false }
+
+        do {
+            let commits = try await fetchCommits(skip: commitLog.count, limit: logPageSize)
+            if commits.isEmpty {
+                hasMoreCommits = false
+            } else {
+                commitLog.append(contentsOf: commits)
+                hasMoreCommits = commits.count >= logPageSize
+            }
+        } catch {
+            print("Failed to load more commits: \(error)")
+            hasMoreCommits = false
+        }
+    }
+
+    private func fetchCommits(skip: Int, limit: Int) async throws -> [CommitInfo] {
+        let path = repositoryPath
+        return try await Task.detached(priority: .utility) {
+            let url = URL(fileURLWithPath: path)
+            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+            let sequence = try repository.log(sorting: .time)
+            var commits: [CommitInfo] = []
+            var count = 0
+            var skipped = 0
+
+            for commit in sequence {
+                if skipped < skip {
+                    skipped += 1
+                    continue
+                }
+
+                if count >= limit {
+                    break
+                }
+
+                let idString = commit.id.hex
+                let shortId = String(idString.prefix(7))
+
+                let parentIds = (try? commit.parents.map { $0.id.hex }) ?? []
+
+                commits.append(
+                    CommitInfo(
+                        id: idString,
+                        shortId: shortId,
+                        summary: commit.summary,
+                        body: commit.body,
+                        authorName: commit.author.name,
+                        authorEmail: commit.author.email,
+                        date: commit.date,
+                        parentIds: parentIds
+                    ))
+
+                count += 1
+            }
+
+            return commits
+        }.value
+    }
+
+    // MARK: - Commit Detail
+
+    func loadCommitDetail(for commitId: String) async {
+        guard !repositoryPath.isEmpty else { return }
+
+        // Find the commit info from the log
+        guard let commitInfo = commitLog.first(where: { $0.id == commitId }) else { return }
+
+        isLoadingCommitDetail = true
+        selectedCommitId = commitId
+        defer { isLoadingCommitDetail = false }
+
+        do {
+            let detail = try await fetchCommitDetail(commitId: commitId, commitInfo: commitInfo)
+            selectedCommitDetail = detail
+        } catch {
+            print("Failed to load commit detail: \(error)")
+            selectedCommitDetail = nil
+        }
+    }
+
+    func clearSelectedCommit() {
+        selectedCommitId = nil
+        selectedCommitDetail = nil
+    }
+
+    private func fetchCommitDetail(commitId: String, commitInfo: CommitInfo) async throws -> CommitDetail {
+        let path = repositoryPath
+        return try await Task.detached(priority: .utility) {
+            let url = URL(fileURLWithPath: path)
+            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+            // Get the commit
+            let oid = try SwiftGitX.OID(hex: commitId)
+            let commit: SwiftGitX.Commit = try repository.show(id: oid)
+
+            // Get the diff for this commit
+            let diff = try repository.diff(commit: commit)
+
+            var files: [CommitFileChange] = []
+            var totalAdditions = 0
+            var totalDeletions = 0
+
+            for (index, delta) in diff.changes.enumerated() {
+                let changeType: CommitFileChange.FileChangeType
+                switch delta.type {
+                case .added: changeType = .added
+                case .deleted: changeType = .deleted
+                case .renamed: changeType = .renamed
+                case .copied: changeType = .copied
+                default: changeType = .modified
+                }
+
+                // Build diff output for this file
+                var diffOutput = ""
+                if index < diff.patches.count {
+                    let patch = diff.patches[index]
+                    let filePath = delta.newFile.path
+
+                    diffOutput += "diff --git a/\(filePath) b/\(filePath)\n"
+
+                    for hunk in patch.hunks {
+                        diffOutput += hunk.header
+                        for line in hunk.lines {
+                            let prefix: String
+                            switch line.type {
+                            case .addition, .additionEOF:
+                                prefix = "+"
+                            case .deletion, .deletionEOF:
+                                prefix = "-"
+                            default:
+                                prefix = " "
+                            }
+                            diffOutput += prefix + line.content
+                        }
+                    }
+                }
+
+                // Count additions and deletions
+                var additions = 0
+                var deletions = 0
+                if index < diff.patches.count {
+                    let patch = diff.patches[index]
+                    for hunk in patch.hunks {
+                        for line in hunk.lines {
+                            switch line.type {
+                            case .addition, .additionEOF:
+                                additions += 1
+                            case .deletion, .deletionEOF:
+                                deletions += 1
+                            default:
+                                break
+                            }
+                        }
+                    }
+                }
+
+                totalAdditions += additions
+                totalDeletions += deletions
+
+                files.append(
+                    CommitFileChange(
+                        id: delta.newFile.path,
+                        path: delta.newFile.path,
+                        changeType: changeType,
+                        additions: additions,
+                        deletions: deletions,
+                        diffOutput: diffOutput
+                    ))
+            }
+
+            return CommitDetail(
+                commit: commitInfo,
+                files: files,
+                totalAdditions: totalAdditions,
+                totalDeletions: totalDeletions
+            )
+        }.value
     }
 
     // MARK: - Status

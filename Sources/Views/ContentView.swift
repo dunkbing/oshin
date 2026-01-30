@@ -726,7 +726,7 @@ struct GitTabView: View {
     @Binding var selectedFile: String?
     let diffFontSize: Double
 
-    private var gitStatus: GitStatus { gitService.currentStatus }
+    @State private var sidebarTab: GitSidebarTab = .changes
 
     var body: some View {
         VStack(spacing: 0) {
@@ -737,7 +737,7 @@ struct GitTabView: View {
             if gitService.isLoading {
                 ProgressView("Loading git status...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if gitStatus.hasChanges {
+            } else {
                 HSplitView {
                     GitSidebarView(
                         selectedFile: selectedFile,
@@ -746,24 +746,25 @@ struct GitTabView: View {
                             Task {
                                 await gitService.loadFileDiff(for: file)
                             }
-                        }
+                        },
+                        sidebarTab: $sidebarTab
                     )
                     .frame(minWidth: 250, idealWidth: 280, maxWidth: 350)
 
-                    DiffView(
-                        diffOutput: gitService.selectedFileDiff,
-                        fileName: selectedFile ?? "",
-                        fontSize: diffFontSize
-                    )
-                    .frame(minWidth: 400)
+                    // Right panel content based on selected tab
+                    switch sidebarTab {
+                    case .changes:
+                        DiffView(
+                            diffOutput: gitService.selectedFileDiff,
+                            fileName: selectedFile ?? "",
+                            fontSize: diffFontSize
+                        )
+                        .frame(minWidth: 400)
+                    case .history:
+                        CommitDetailView(fontSize: diffFontSize)
+                            .frame(minWidth: 400)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ContentUnavailableView(
-                    "No Changes",
-                    systemImage: "checkmark.circle",
-                    description: Text("Working tree is clean.")
-                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

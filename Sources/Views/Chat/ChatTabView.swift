@@ -186,7 +186,8 @@ struct ChatTabView: View {
                 } label: {
                     Image(systemName: agentSession.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(agentSession.isStreaming ? .red : (canSend ? Color.accentColor : Color.secondary))
+                        .foregroundStyle(
+                            agentSession.isStreaming ? .red : (canSend ? Color.accentColor : Color.secondary))
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSend && !agentSession.isStreaming)
