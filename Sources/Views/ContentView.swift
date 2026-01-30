@@ -4,9 +4,9 @@ import SwiftUI
 // MARK: - Detail Tab
 
 enum DetailTab: String, CaseIterable {
+    case git
     case chat
     case terminal
-    case git
 
     var icon: String {
         switch self {
