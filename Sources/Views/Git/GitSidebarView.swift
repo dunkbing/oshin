@@ -178,14 +178,27 @@ struct GitChangesHeader: View {
 
 // MARK: - History Tab
 
+enum GitHistoryMode: String, CaseIterable {
+    case list = "List"
+    case graph = "Graph"
+}
+
 struct GitHistoryTab: View {
     @EnvironmentObject private var gitService: GitService
+    @State private var historyMode: GitHistoryMode = .list
 
     var body: some View {
         VStack(spacing: 0) {
-            GitHistoryHeader()
+            GitHistoryHeader(historyMode: $historyMode)
             Divider()
-            GitLogView()
+
+            switch historyMode {
+            case .list:
+                GitLogView()
+            case .graph:
+                GitGraphView()
+            }
+
             if let totalCount = gitService.totalCommitCount {
                 Divider()
                 HStack {
@@ -205,13 +218,24 @@ struct GitHistoryTab: View {
 
 struct GitHistoryHeader: View {
     @EnvironmentObject private var gitService: GitService
+    @Binding var historyMode: GitHistoryMode
 
     var body: some View {
         HStack {
-            Text("Commit History")
+            Text("History")
                 .font(.system(size: 12, weight: .medium))
 
             Spacer()
+
+            // Mode toggle
+            Picker("", selection: $historyMode) {
+                ForEach(GitHistoryMode.allCases, id: \.self) { mode in
+                    Image(systemName: mode == .list ? "list.bullet" : "point.3.connected.trianglepath.dotted")
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 70)
 
             Button {
                 Task {
