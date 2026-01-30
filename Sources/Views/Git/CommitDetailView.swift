@@ -13,6 +13,7 @@ struct CommitDetailView: View {
     let fontSize: Double
 
     @State private var expandedFiles: Set<String> = []
+    @AppStorage("diffViewMode") private var viewMode: DiffViewMode = .unified
 
     private var detail: CommitDetail? { gitService.selectedCommitDetail }
 
@@ -28,20 +29,29 @@ struct CommitDetailView: View {
 
                     Divider()
 
-                    // File changes
-                    CommitFilesSection(
-                        files: detail.files,
-                        expandedFiles: $expandedFiles,
-                        fontSize: fontSize
-                    )
-
-                    Divider()
-
-                    // Stats footer
+                    // Stats
                     CommitStatsFooter(
                         fileCount: detail.files.count,
                         additions: detail.totalAdditions,
                         deletions: detail.totalDeletions
+                    )
+
+                    Divider()
+
+                    // Files header with view mode toggle
+                    CommitFilesHeader(
+                        fileCount: detail.files.count,
+                        viewMode: $viewMode
+                    )
+
+                    Divider()
+
+                    // File changes
+                    CommitFilesSection(
+                        files: detail.files,
+                        expandedFiles: $expandedFiles,
+                        fontSize: fontSize,
+                        viewMode: viewMode
                     )
                 }
             }
@@ -116,12 +126,41 @@ struct CommitHeaderSection: View {
     }
 }
 
+// MARK: - Commit Files Header
+
+struct CommitFilesHeader: View {
+    let fileCount: Int
+    @Binding var viewMode: DiffViewMode
+
+    var body: some View {
+        HStack {
+            Text("\(fileCount) file\(fileCount == 1 ? "" : "s") changed")
+                .font(.system(size: 12, weight: .medium))
+
+            Spacer()
+
+            // View mode toggle
+            Picker("", selection: $viewMode) {
+                ForEach(DiffViewMode.allCases, id: \.self) { mode in
+                    Image(systemName: mode.icon)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 70)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
 // MARK: - Commit Files Section
 
 struct CommitFilesSection: View {
     let files: [CommitFileChange]
     @Binding var expandedFiles: Set<String>
     let fontSize: Double
+    let viewMode: DiffViewMode
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -130,6 +169,7 @@ struct CommitFilesSection: View {
                     file: file,
                     isExpanded: expandedFiles.contains(file.id),
                     fontSize: fontSize,
+                    viewMode: viewMode,
                     onToggle: {
                         if expandedFiles.contains(file.id) {
                             expandedFiles.remove(file.id)
@@ -149,6 +189,7 @@ struct CommitFileRow: View {
     let file: CommitFileChange
     let isExpanded: Bool
     let fontSize: Double
+    let viewMode: DiffViewMode
     let onToggle: () -> Void
 
     var body: some View {
@@ -201,7 +242,7 @@ struct CommitFileRow: View {
 
             // Expanded diff content
             if isExpanded && !file.diffOutput.isEmpty {
-                CommitFileDiffView(diffOutput: file.diffOutput, fontSize: fontSize)
+                CommitFileDiffView(diffOutput: file.diffOutput, fontSize: fontSize, viewMode: viewMode)
             }
 
             Divider()
@@ -214,13 +255,17 @@ struct CommitFileRow: View {
 struct CommitFileDiffView: View {
     let diffOutput: String
     let fontSize: Double
+    let viewMode: DiffViewMode
 
     @State private var lines: [DiffLine] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(lines) { line in
-                DiffLineView(line: line, fontSize: fontSize)
+        Group {
+            switch viewMode {
+            case .unified:
+                UnifiedDiffView(lines: lines, fontSize: fontSize)
+            case .split:
+                SplitDiffView(lines: lines, fontSize: fontSize)
             }
         }
         .onAppear {

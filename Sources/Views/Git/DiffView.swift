@@ -79,11 +79,21 @@ struct DiffView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                switch viewMode {
-                case .unified:
-                    UnifiedDiffView(lines: lines, fontSize: fontSize)
-                case .split:
-                    SplitDiffView(lines: lines, fontSize: fontSize)
+                GeometryReader { geometry in
+                    ScrollView([.horizontal, .vertical]) {
+                        switch viewMode {
+                        case .unified:
+                            UnifiedDiffView(lines: lines, fontSize: fontSize)
+                                .frame(
+                                    minWidth: geometry.size.width, minHeight: geometry.size.height,
+                                    alignment: .topLeading)
+                        case .split:
+                            SplitDiffView(lines: lines, fontSize: fontSize, containerWidth: geometry.size.width)
+                                .frame(
+                                    minWidth: geometry.size.width, minHeight: geometry.size.height,
+                                    alignment: .topLeading)
+                        }
+                    }
                 }
             }
         }
@@ -114,14 +124,9 @@ struct UnifiedDiffView: View {
     let fontSize: Double
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView([.horizontal, .vertical]) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(lines) { line in
-                        DiffLineView(line: line, fontSize: fontSize)
-                    }
-                }
-                .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(lines) { line in
+                DiffLineView(line: line, fontSize: fontSize)
             }
         }
     }
@@ -132,36 +137,32 @@ struct UnifiedDiffView: View {
 struct SplitDiffView: View {
     let lines: [DiffLine]
     let fontSize: Double
+    var containerWidth: CGFloat? = nil
 
     var body: some View {
-        GeometryReader { geometry in
-            let sidePairs = buildSideBySidePairs()
+        let sidePairs = buildSideBySidePairs()
 
-            ScrollView([.horizontal, .vertical]) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(sidePairs.enumerated()), id: \.offset) { _, pair in
-                        HStack(spacing: 0) {
-                            // Left side (old/deleted)
-                            SplitDiffLineView(
-                                line: pair.left,
-                                fontSize: fontSize,
-                                showOldLineNumber: true
-                            )
-                            .frame(width: geometry.size.width / 2)
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(sidePairs.enumerated()), id: \.offset) { _, pair in
+                HStack(spacing: 0) {
+                    SplitDiffLineView(
+                        line: pair.left,
+                        fontSize: fontSize,
+                        showOldLineNumber: true
+                    )
+                    .frame(width: containerWidth.map { $0 / 2 }, alignment: .leading)
+                    .frame(maxWidth: containerWidth == nil ? .infinity : nil, alignment: .leading)
 
-                            Divider()
+                    Divider()
 
-                            // Right side (new/added)
-                            SplitDiffLineView(
-                                line: pair.right,
-                                fontSize: fontSize,
-                                showOldLineNumber: false
-                            )
-                            .frame(width: geometry.size.width / 2)
-                        }
-                    }
+                    SplitDiffLineView(
+                        line: pair.right,
+                        fontSize: fontSize,
+                        showOldLineNumber: false
+                    )
+                    .frame(width: containerWidth.map { $0 / 2 }, alignment: .leading)
+                    .frame(maxWidth: containerWidth == nil ? .infinity : nil, alignment: .leading)
                 }
-                .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
             }
         }
     }
