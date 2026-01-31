@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "oosin",
+    name: "oshin",
     platforms: [
         .macOS(.v14)
     ],
@@ -17,7 +17,7 @@ let package = Package(
             path: "Vendor/ghostty/include"
         ),
         .executableTarget(
-            name: "agentmonitor",
+            name: "oshin",
             dependencies: [
                 .product(name: "SwiftGitX", package: "SwiftGitX"),
                 "GhosttyKit",

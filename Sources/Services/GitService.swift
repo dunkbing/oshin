@@ -33,8 +33,7 @@ struct CommitInfo: Identifiable, Equatable {
 
     var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .medium
+        formatter.dateFormat = "dd MMM yyyy HH:mm"
         return formatter.string(from: date)
     }
 }
