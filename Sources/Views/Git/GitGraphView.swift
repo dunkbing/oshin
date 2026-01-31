@@ -94,52 +94,142 @@ struct GitGraphView: View {
     @EnvironmentObject private var gitService: GitService
 
     var body: some View {
-        Group {
-            if gitService.commitLog.isEmpty && gitService.isLoadingLog {
-                ProgressView("Loading commits...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if gitService.commitLog.isEmpty {
-                ContentUnavailableView(
-                    "No Commits",
-                    systemImage: "clock.arrow.circlepath",
-                    description: Text("No commit history found.")
-                )
-            } else {
-                ScrollView([.horizontal, .vertical]) {
-                    GitGraphContentView(
-                        commits: CommitGraph().positionedCommits(gitService.commitLog),
-                        selectedCommitId: Binding(
-                            get: { gitService.selectedCommitId },
-                            set: { newValue in
-                                if let commitId = newValue {
-                                    Task {
-                                        await gitService.loadCommitDetail(for: commitId)
+        VStack(spacing: 0) {
+            // Branch selector header
+            BranchSelectorView()
+                .environmentObject(gitService)
+
+            Divider()
+
+            // Graph content
+            Group {
+                if gitService.commitLog.isEmpty && gitService.isLoadingLog {
+                    ProgressView("Loading commits...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if gitService.commitLog.isEmpty {
+                    ContentUnavailableView(
+                        "No Commits",
+                        systemImage: "clock.arrow.circlepath",
+                        description: Text("No commit history found.")
+                    )
+                } else {
+                    ScrollView([.horizontal, .vertical]) {
+                        GitGraphContentView(
+                            commits: CommitGraph().positionedCommits(gitService.commitLog),
+                            selectedCommitId: Binding(
+                                get: { gitService.selectedCommitId },
+                                set: { newValue in
+                                    if let commitId = newValue {
+                                        Task {
+                                            await gitService.loadCommitDetail(for: commitId)
+                                        }
+                                    } else {
+                                        gitService.clearSelectedCommit()
                                     }
-                                } else {
-                                    gitService.clearSelectedCommit()
+                                }
+                            ),
+                            hasMore: gitService.hasMoreCommits,
+                            isLoading: gitService.isLoadingLog,
+                            onLoadMore: {
+                                Task {
+                                    await gitService.loadMoreCommits()
                                 }
                             }
-                        ),
-                        hasMore: gitService.hasMoreCommits,
-                        isLoading: gitService.isLoadingLog,
-                        onLoadMore: {
-                            Task {
-                                await gitService.loadMoreCommits()
-                            }
-                        }
-                    )
-                    .padding(.horizontal)
-                    .padding(.vertical, 16)
+                        )
+                        .padding(.horizontal)
+                        .padding(.vertical, 16)
+                    }
+                    .background(Color(nsColor: .textBackgroundColor))
                 }
-                .background(Color(nsColor: .textBackgroundColor))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
+            if gitService.branches.isEmpty {
+                await gitService.loadBranches()
+            }
             if gitService.commitLog.isEmpty {
                 await gitService.loadCommitLog()
             }
         }
+    }
+}
+
+// MARK: - Branch Selector View
+
+struct BranchSelectorView: View {
+    @EnvironmentObject private var gitService: GitService
+    @State private var showRemoteBranches = true
+
+    private var filteredBranches: [BranchInfo] {
+        if showRemoteBranches {
+            return gitService.branches
+        } else {
+            return gitService.branches.filter { !$0.isRemote }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Branch:")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            Picker(
+                "",
+                selection: Binding(
+                    get: { gitService.selectedBranch },
+                    set: { newValue in
+                        Task {
+                            await gitService.selectBranch(newValue)
+                        }
+                    }
+                )
+            ) {
+                // Local branches section
+                let localBranches = filteredBranches.filter { !$0.isRemote }
+                if !localBranches.isEmpty {
+                    ForEach(localBranches) { branch in
+                        HStack {
+                            if branch.isCurrent {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                            Text(branch.name)
+                        }
+                        .tag(branch.name as String?)
+                    }
+                }
+
+                // Remote branches section
+                let remoteBranches = filteredBranches.filter { $0.isRemote }
+                if showRemoteBranches && !remoteBranches.isEmpty {
+                    Divider()
+                    ForEach(remoteBranches) { branch in
+                        Text(branch.name)
+                            .foregroundStyle(.secondary)
+                            .tag(branch.name as String?)
+                    }
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(minWidth: 200)
+
+            Toggle("Show Remote", isOn: $showRemoteBranches)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11))
+
+            Spacer()
+
+            if let count = gitService.totalCommitCount {
+                Text("\(count) commits")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 

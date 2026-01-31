@@ -749,7 +749,7 @@ struct GitTabView: View {
                         },
                         sidebarTab: $sidebarTab
                     )
-                    .frame(minWidth: 250, idealWidth: 280, maxWidth: 350)
+                    .frame(minWidth: 250, idealWidth: 300)
 
                     // Right panel content based on selected tab
                     switch sidebarTab {

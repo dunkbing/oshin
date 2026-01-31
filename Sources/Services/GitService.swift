@@ -103,6 +103,25 @@ struct CommitDetail: Equatable {
     }
 }
 
+// MARK: - Branch Info Model
+
+struct BranchInfo: Identifiable, Hashable {
+    var id: String { name }
+    let name: String
+    let isRemote: Bool
+    let isCurrent: Bool
+
+    var displayName: String {
+        if isRemote {
+            // Remove "origin/" prefix for display
+            if name.hasPrefix("origin/") {
+                return String(name.dropFirst(7))
+            }
+        }
+        return name
+    }
+}
+
 @MainActor
 class GitService: ObservableObject {
     @Published private(set) var currentStatus: GitStatus = .empty
@@ -116,6 +135,8 @@ class GitService: ObservableObject {
     @Published private(set) var selectedCommitDetail: CommitDetail?
     @Published private(set) var isLoadingCommitDetail = false
     @Published var selectedCommitId: String?
+    @Published private(set) var branches: [BranchInfo] = []
+    @Published var selectedBranch: String? = nil  // nil means "Show All"
 
     private var repositoryPath: String = ""
     private let logPageSize = 50
@@ -132,8 +153,11 @@ class GitService: ObservableObject {
         totalCommitCount = nil
         selectedCommitId = nil
         selectedCommitDetail = nil
+        selectedBranch = nil
+        branches = []
         Task {
             await reloadStatus()
+            await loadBranches()
         }
     }
 
@@ -164,11 +188,26 @@ class GitService: ObservableObject {
 
     private func fetchTotalCommitCount() async throws -> Int {
         let path = repositoryPath
+        let branchName = selectedBranch
         return try await Task.detached(priority: .utility) {
             let url = URL(fileURLWithPath: path)
             let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
 
-            let sequence = try repository.log(sorting: .none)
+            let sequence: SwiftGitX.CommitSequence
+            if let branchName = branchName {
+                // Try to find the branch (local first, then remote)
+                let branch: SwiftGitX.Branch? =
+                    (try? repository.branch.get(named: branchName, type: .local))
+                    ?? (try? repository.branch.get(named: branchName, type: .remote))
+                if let branch = branch {
+                    sequence = try repository.log(from: branch, sorting: .none)
+                } else {
+                    sequence = try repository.log(sorting: .none)
+                }
+            } else {
+                sequence = try repository.log(sorting: .none)
+            }
+
             var count = 0
             for _ in sequence {
                 count += 1
@@ -199,11 +238,28 @@ class GitService: ObservableObject {
 
     private func fetchCommits(skip: Int, limit: Int) async throws -> [CommitInfo] {
         let path = repositoryPath
+        let branchName = selectedBranch
         return try await Task.detached(priority: .utility) {
             let url = URL(fileURLWithPath: path)
             let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
 
-            let sequence = try repository.log(sorting: .time)
+            // Get the starting commit for the branch (or HEAD for all)
+            let sequence: SwiftGitX.CommitSequence
+            if let branchName = branchName {
+                // Try to find the branch (local first, then remote)
+                let branch: SwiftGitX.Branch? =
+                    (try? repository.branch.get(named: branchName, type: .local))
+                    ?? (try? repository.branch.get(named: branchName, type: .remote))
+                if let branch = branch {
+                    sequence = try repository.log(from: branch, sorting: .time)
+                } else {
+                    // Fallback to HEAD
+                    sequence = try repository.log(sorting: .time)
+                }
+            } else {
+                sequence = try repository.log(sorting: .time)
+            }
+
             var commits: [CommitInfo] = []
             var count = 0
             var skipped = 0
@@ -387,6 +443,79 @@ class GitService: ObservableObject {
                 totalDeletions: totalDeletions
             )
         }.value
+    }
+
+    // MARK: - Branches
+
+    func loadBranches() async {
+        guard !repositoryPath.isEmpty else { return }
+
+        do {
+            let branchList = try await fetchBranches()
+            branches = branchList
+
+            // Default to current branch if none selected
+            if selectedBranch == nil, let currentBranch = branchList.first(where: { $0.isCurrent }) {
+                selectedBranch = currentBranch.name
+            }
+        } catch {
+            print("Failed to load branches: \(error)")
+            branches = []
+        }
+    }
+
+    private func fetchBranches() async throws -> [BranchInfo] {
+        let path = repositoryPath
+        return try await Task.detached(priority: .utility) {
+            let url = URL(fileURLWithPath: path)
+            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+            var branchInfos: [BranchInfo] = []
+
+            // Get current branch name
+            let currentBranchName = (try? repository.branch.current)?.name ?? ""
+
+            // Get local branches
+            for branch in repository.branch.local {
+                branchInfos.append(
+                    BranchInfo(
+                        name: branch.name,
+                        isRemote: false,
+                        isCurrent: branch.name == currentBranchName
+                    ))
+            }
+
+            // Get remote branches
+            for branch in repository.branch.remote {
+                // Skip HEAD reference
+                if branch.name.hasSuffix("/HEAD") { continue }
+                branchInfos.append(
+                    BranchInfo(
+                        name: branch.name,
+                        isRemote: true,
+                        isCurrent: false
+                    ))
+            }
+
+            // Sort: current first, then local, then remote
+            branchInfos.sort { a, b in
+                if a.isCurrent != b.isCurrent { return a.isCurrent }
+                if a.isRemote != b.isRemote { return !a.isRemote }
+                return a.name < b.name
+            }
+
+            return branchInfos
+        }.value
+    }
+
+    func selectBranch(_ branch: String?) async {
+        selectedBranch = branch
+        commitLog = []
+        hasMoreCommits = true
+        totalCommitCount = nil
+        selectedCommitId = nil
+        selectedCommitDetail = nil
+        await loadCommitLog()
     }
 
     // MARK: - Status

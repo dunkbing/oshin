@@ -178,77 +178,8 @@ struct GitChangesHeader: View {
 
 // MARK: - History Tab
 
-enum GitHistoryMode: String, CaseIterable {
-    case list = "List"
-    case graph = "Graph"
-}
-
 struct GitHistoryTab: View {
-    @EnvironmentObject private var gitService: GitService
-    @State private var historyMode: GitHistoryMode = .list
-
     var body: some View {
-        VStack(spacing: 0) {
-            GitHistoryHeader(historyMode: $historyMode)
-            Divider()
-
-            switch historyMode {
-            case .list:
-                GitLogView()
-            case .graph:
-                GitGraphView()
-            }
-
-            if let totalCount = gitService.totalCommitCount {
-                Divider()
-                HStack {
-                    Spacer()
-                    Text("\(totalCount) commits")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, 6)
-            }
-        }
-    }
-}
-
-// MARK: - History Header
-
-struct GitHistoryHeader: View {
-    @EnvironmentObject private var gitService: GitService
-    @Binding var historyMode: GitHistoryMode
-
-    var body: some View {
-        HStack {
-            Text("History")
-                .font(.system(size: 12, weight: .medium))
-
-            Spacer()
-
-            // Mode toggle
-            Picker("", selection: $historyMode) {
-                ForEach(GitHistoryMode.allCases, id: \.self) { mode in
-                    Image(systemName: mode == .list ? "list.bullet" : "point.3.connected.trianglepath.dotted")
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 70)
-
-            Button {
-                Task {
-                    await gitService.loadCommitLog()
-                }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12))
-            }
-            .buttonStyle(.borderless)
-            .disabled(gitService.isLoadingLog)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        GitGraphView()
     }
 }
