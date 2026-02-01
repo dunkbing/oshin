@@ -10,40 +10,64 @@ const { title } = Astro.props;
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="AgentMonitor - Monitor and manage AI coding agents on macOS" />
+    <meta name="description" content="Oshin — A unified macOS interface to monitor AI coding agents, manage Git repositories, and interact with Claude, Codex, and Gemini" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
 
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content="Monitor AI coding agents on macOS. A unified interface for Claude, Codex, and Gemini." />
+    <meta property="og:type" content="website" />
+
+    <!-- Fonts: Geist for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <title>{title}</title>
   </head>
   <body>
+    <div class="noise"></div>
     <slot />
   </body>
 </html>
 
 <style is:global>
   :root {
-    --bg-primary: #fafafa;
-    --bg-elevated: #f0f0f0;
-    --text-primary: #171717;
-    --text-secondary: #525252;
-    --text-muted: #a3a3a3;
-    --border: #e5e5e5;
+    /* Dark theme by default */
+    --bg-primary: #09090b;
+    --bg-secondary: #111113;
+    --bg-elevated: #18181b;
+    --bg-card: #1c1c1f;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #52525b;
+    --border: #27272a;
+    --border-subtle: #1f1f23;
+
+    /* Accent colors */
+    --accent-blue: #3b82f6;
+    --accent-purple: #a855f7;
+    --accent-cyan: #06b6d4;
+    --accent-green: #22c55e;
+
+    /* Glow */
+    --glow-bg: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent);
   }
 
-  @media (prefers-color-scheme: dark) {
+  @media (prefers-color-scheme: light) {
     :root {
-      --bg-primary: #0a0a0a;
-      --bg-elevated: #171717;
-      --text-primary: #fafafa;
-      --text-secondary: #a3a3a3;
-      --text-muted: #525252;
-      --border: #262626;
+      --bg-primary: #fafafa;
+      --bg-secondary: #f4f4f5;
+      --bg-elevated: #ffffff;
+      --bg-card: #ffffff;
+      --text-primary: #09090b;
+      --text-secondary: #52525b;
+      --text-muted: #a1a1aa;
+      --border: #e4e4e7;
+      --border-subtle: #f4f4f5;
+      --glow-bg: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.08), transparent);
     }
   }
 
@@ -53,25 +77,46 @@ const { title } = Astro.props;
     box-sizing: border-box;
   }
 
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     min-height: 100vh;
+    position: relative;
+  }
+
+  /* Subtle noise texture overlay */
+  .noise {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.015;
+    z-index: 1000;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
   }
 
   ::selection {
-    background: var(--text-primary);
-    color: var(--bg-primary);
+    background: var(--accent-purple);
+    color: white;
   }
 
   a {
     color: inherit;
+    text-decoration: none;
   }
 
   button {
@@ -79,5 +124,10 @@ const { title } = Astro.props;
     cursor: pointer;
     border: none;
     background: none;
+  }
+
+  /* Smooth transitions for theme switching */
+  *, *::before, *::after {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
 </style>
