@@ -118,16 +118,16 @@ struct RepositoryDetailView: View {
                 .frame(height: 32)
 
             switch selectedTab {
-            case .chat:
-                ChatContainerView(workingDirectory: repository.path)
-            case .terminal:
-                TerminalTabView(workingDirectory: repository.path, ghosttyApp: ghosttyApp)
             case .git:
                 GitTabView(
                     repository: repository,
                     selectedFile: $selectedFile,
                     diffFontSize: diffFontSize
                 )
+            case .chat:
+                ChatContainerView(workingDirectory: repository.path)
+            case .terminal:
+                TerminalTabView(workingDirectory: repository.path, ghosttyApp: ghosttyApp)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -735,6 +735,10 @@ struct GitTabView: View {
     var body: some View {
         VStack(spacing: 0) {
             GitTabHeader(repository: repository)
+
+            Divider()
+
+            GitSidebarTabPicker(selectedTab: $sidebarTab)
 
             Divider()
 

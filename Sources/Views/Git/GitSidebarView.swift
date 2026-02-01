@@ -27,11 +27,6 @@ struct GitSidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab picker
-            GitSidebarTabPicker(selectedTab: $sidebarTab)
-
-            Divider()
-
             // Tab content
             switch sidebarTab {
             case .changes:
@@ -55,23 +50,24 @@ struct GitSidebarTabPicker: View {
     @Binding var selectedTab: GitSidebarTab
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(GitSidebarTab.allCases, id: \.self) { tab in
                 Button {
                     selectedTab = tab
                 } label: {
                     Text(tab.rawValue)
                         .font(.system(size: 11, weight: .medium))
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(selectedTab == tab ? Color.primary.opacity(0.1) : Color.clear)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(selectedTab == tab ? Color.primary.opacity(0.12) : Color.clear)
                         )
                         .foregroundStyle(selectedTab == tab ? .primary : .secondary)
                 }
                 .buttonStyle(.plain)
             }
+            Spacer()
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
