@@ -810,6 +810,49 @@ class GitService: ObservableObject {
         }
     }
 
+    func createBranch(name: String, baseBranch: String, checkout: Bool = true) {
+        guard !isOperationPending else { return }
+        guard !name.isEmpty else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                let url = URL(fileURLWithPath: path)
+                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+                // Get the base branch
+                let base: SwiftGitX.Branch? =
+                    (try? repository.branch.get(named: baseBranch, type: .local))
+                    ?? (try? repository.branch.get(named: baseBranch, type: .remote))
+
+                guard let baseBranchRef = base else {
+                    throw NSError(
+                        domain: "GitService", code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Base branch not found: \(baseBranch)"])
+                }
+
+                // Create the new branch from the base branch
+                let newBranch = try repository.branch.create(named: name, from: baseBranchRef)
+
+                // Optionally checkout the new branch
+                if checkout {
+                    try repository.switch(to: newBranch)
+                }
+
+                print("Created branch '\(name)' from '\(baseBranch)'")
+            } catch {
+                print("Failed to create branch: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+            await self?.loadBranches()
+        }
+    }
+
     // MARK: - Diff
 
     func loadFileDiff(for file: String) async {

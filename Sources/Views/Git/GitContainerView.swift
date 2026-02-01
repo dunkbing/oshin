@@ -72,6 +72,7 @@ struct GitTabHeader: View {
     let repository: Repository
 
     @State private var showingBranchPicker = false
+    @State private var showingNewBranch = false
 
     private var gitStatus: GitStatus { gitService.currentStatus }
 
@@ -98,91 +99,121 @@ struct GitTabHeader: View {
 
             Spacer()
 
-            // Branch selector
+            // Branch selector with new branch button
             if !gitStatus.currentBranch.isEmpty {
-                Button {
-                    showingBranchPicker = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.branch")
-                        Text(gitStatus.currentBranch)
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.08))
-                    )
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingBranchPicker, arrowEdge: .bottom) {
-                    BranchPickerPopover(
-                        currentBranch: gitStatus.currentBranch,
-                        onSelect: { branch in
-                            gitService.checkout(branch: branch)
-                            showingBranchPicker = false
+                HStack(spacing: 0) {
+                    Button {
+                        showingBranchPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.branch")
+                            Text(gitStatus.currentBranch)
                         }
-                    )
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingBranchPicker, arrowEdge: .bottom) {
+                        BranchPickerPopover(
+                            currentBranch: gitStatus.currentBranch,
+                            onSelect: { branch in
+                                gitService.checkout(branch: branch)
+                                showingBranchPicker = false
+                            }
+                        )
+                    }
+
+                    Divider()
+                        .frame(height: 16)
+
+                    Button {
+                        showingNewBranch = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .medium))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Create new branch")
+                    .popover(isPresented: $showingNewBranch, arrowEdge: .bottom) {
+                        NewBranchPopover(
+                            currentBranch: gitStatus.currentBranch,
+                            onCreate: { name, baseBranch in
+                                gitService.createBranch(name: name, baseBranch: baseBranch)
+                                showingNewBranch = false
+                            },
+                            onCancel: {
+                                showingNewBranch = false
+                            }
+                        )
+                    }
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(0.08))
+                )
             }
 
             // Remote operations
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 Button {
                     gitService.fetch()
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle")
+                        Image(systemName: "arrow.triangle.2.circlepath")
                         Text("Fetch")
                     }
                     .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.08))
-                    )
                 }
                 .buttonStyle(.plain)
                 .help("Fetch from remote")
+
+                Divider()
+                    .frame(height: 16)
 
                 Button {
                     gitService.pull()
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.down.to.line")
+                        Image(systemName: "arrow.down")
                         Text("Pull")
                     }
                     .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.blue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.08))
-                    )
                 }
                 .buttonStyle(.plain)
                 .help("Pull from remote")
+
+                Divider()
+                    .frame(height: 16)
 
                 Button {
                     gitService.push()
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.to.line")
+                        Image(systemName: "arrow.up")
                         Text("Push")
                     }
                     .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.green)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.08))
-                    )
                 }
                 .buttonStyle(.plain)
                 .help("Push to remote")
             }
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.06))
+            )
+            .opacity(gitService.isOperationPending ? 0.5 : 1)
             .disabled(gitService.isOperationPending)
 
             Divider()
@@ -279,6 +310,126 @@ struct BranchPickerPopover: View {
         }
         .frame(width: 250)
         .onAppear {
+            Task {
+                await gitService.loadBranches()
+            }
+        }
+    }
+}
+
+// MARK: - New Branch Popover
+
+struct NewBranchPopover: View {
+    @EnvironmentObject private var gitService: GitService
+
+    let currentBranch: String
+    let onCreate: (String, String) -> Void
+    let onCancel: () -> Void
+
+    @State private var branchName = ""
+    @State private var selectedBaseBranch: String = ""
+    @State private var showingBaseBranchPicker = false
+
+    private var localBranches: [BranchInfo] {
+        gitService.branches.filter { !$0.isRemote }
+    }
+
+    private var isValid: Bool {
+        !branchName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("New Branch")
+                .font(.system(size: 13, weight: .semibold))
+
+            // Branch name input
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Branch name")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                TextField("feature/my-branch", text: $branchName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+            }
+
+            // Base branch selector
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Based on")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                Menu {
+                    ForEach(localBranches) { branch in
+                        Button {
+                            selectedBaseBranch = branch.name
+                        } label: {
+                            HStack {
+                                Text(branch.name)
+                                if branch.name == selectedBaseBranch {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Text(selectedBaseBranch.isEmpty ? currentBranch : selectedBaseBranch)
+                            .font(.system(size: 12))
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .menuStyle(.borderlessButton)
+            }
+
+            Divider()
+
+            // Action buttons
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button {
+                    let baseBranch = selectedBaseBranch.isEmpty ? currentBranch : selectedBaseBranch
+                    onCreate(branchName.trimmingCharacters(in: .whitespaces), baseBranch)
+                } label: {
+                    Text("Create Branch")
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isValid ? Color.accentColor : Color.accentColor.opacity(0.5))
+                        )
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(!isValid)
+            }
+        }
+        .padding(12)
+        .frame(width: 280)
+        .onAppear {
+            selectedBaseBranch = currentBranch
             Task {
                 await gitService.loadBranches()
             }
