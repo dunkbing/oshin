@@ -114,10 +114,9 @@ struct RepositoryDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            DetailTabBar(selectedTab: $selectedTab)
-            Divider()
+            Spacer()
+                .frame(height: 32)
 
-            // Tab content
             switch selectedTab {
             case .chat:
                 ChatContainerView(workingDirectory: repository.path)
@@ -132,6 +131,11 @@ struct RepositoryDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                DetailTabBar(selectedTab: $selectedTab)
+            }
+        }
         .environmentObject(gitService)
         .onAppear {
             gitService.setRepositoryPath(repository.path)
