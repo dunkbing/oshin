@@ -155,11 +155,22 @@ struct ChatContainerView: View {
     @ObservedObject private var sessionManager = ChatSessionManager.shared
     @State private var selectedSessionId: UUID?
     @State private var showingAgentPicker = false
+    @State private var showingSidebar = true
 
     @AppStorage("defaultACPAgent") private var defaultACPAgent = "claude"
 
     private var sessions: [ChatSession] {
         sessionManager.getSessions(for: workingDirectory)
+    }
+
+    private var selectedSession: ChatSession? {
+        sessions.first { $0.id == selectedSessionId }
+    }
+
+    /// All conversations (active + history) for the current agent
+    private var conversationHistory: [ChatSession] {
+        guard let currentAgentId = selectedSession?.agentId else { return [] }
+        return sessionManager.getConversationHistory(for: workingDirectory, agentId: currentAgentId)
     }
 
     var body: some View {
@@ -169,6 +180,7 @@ struct ChatContainerView: View {
                 sessions: sessions,
                 selectedSessionId: $selectedSessionId,
                 showingAgentPicker: $showingAgentPicker,
+                showingSidebar: $showingSidebar,
                 onClose: { session in
                     closeSession(session)
                 },
@@ -179,22 +191,50 @@ struct ChatContainerView: View {
 
             Divider()
 
-            // Chat content
+            // Chat content with sidebar
             if sessions.isEmpty {
                 chatEmptyState
             } else {
-                ZStack {
-                    ForEach(sessions) { session in
-                        let isSelected = selectedSessionId == session.id
-                        ChatTabView(
-                            chatSession: session,
-                            sessionManager: sessionManager,
-                            isSelected: isSelected
+                HSplitView {
+                    // Sidebar - conversation history
+                    if showingSidebar {
+                        ChatSidebarView(
+                            workingDirectory: workingDirectory,
+                            currentAgentId: selectedSession?.agentId,
+                            selectedSessionId: $selectedSessionId,
+                            onNewSession: {
+                                if let agentId = selectedSession?.agentId {
+                                    createNewSession(agentId: agentId)
+                                }
+                            },
+                            onSelectSession: { session in
+                                selectOrRestoreSession(session)
+                            },
+                            onSelectClaudeSession: { claudeSession in
+                                selectClaudeSession(claudeSession)
+                            },
+                            onDeleteSession: { session in
+                                deleteSession(session)
+                            }
                         )
-                        .opacity(isSelected ? 1 : 0)
-                        .allowsHitTesting(isSelected)
-                        .zIndex(isSelected ? 1 : 0)
+                        .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
                     }
+
+                    // Main chat area
+                    ZStack {
+                        ForEach(sessions) { session in
+                            let isSelected = selectedSessionId == session.id
+                            ChatTabView(
+                                chatSession: session,
+                                sessionManager: sessionManager,
+                                isSelected: isSelected
+                            )
+                            .opacity(isSelected ? 1 : 0)
+                            .allowsHitTesting(isSelected)
+                            .zIndex(isSelected ? 1 : 0)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -262,6 +302,341 @@ struct ChatContainerView: View {
             selectedSessionId = sessions.first?.id
         }
     }
+
+    private func selectOrRestoreSession(_ session: ChatSession) {
+        // If session is already in active sessions, just select it
+        if sessions.contains(where: { $0.id == session.id }) {
+            selectedSessionId = session.id
+        } else {
+            // Need to restore from history - get the stored conversation
+            if let stored = ConversationStore.shared.getConversation(
+                id: session.id,
+                repositoryPath: workingDirectory
+            ) {
+                let restoredSession = sessionManager.restoreSession(stored)
+                selectedSessionId = restoredSession.id
+            }
+        }
+    }
+
+    private func deleteSession(_ session: ChatSession) {
+        let wasSelected = selectedSessionId == session.id
+        sessionManager.deleteSession(session)
+
+        if wasSelected {
+            selectedSessionId = sessions.first?.id
+        }
+    }
+
+    private func selectClaudeSession(_ claudeSession: ClaudeSessionEntry) {
+        // Check if we already have this session open
+        if let existing = sessions.first(where: { $0.externalSessionId == claudeSession.sessionId }) {
+            selectedSessionId = existing.id
+            return
+        }
+
+        // Create a new session from the Claude session entry (loads messages from JSONL)
+        let session = sessionManager.createSessionFromClaude(claudeSession, repositoryPath: workingDirectory)
+        selectedSessionId = session.id
+    }
+}
+
+// MARK: - Chat Sidebar View
+
+struct ChatSidebarView: View {
+    let workingDirectory: String
+    let currentAgentId: String?
+    @Binding var selectedSessionId: UUID?
+    let onNewSession: () -> Void
+    let onSelectSession: (ChatSession) -> Void
+    let onSelectClaudeSession: (ClaudeSessionEntry) -> Void
+    let onDeleteSession: (ChatSession) -> Void
+
+    @ObservedObject private var sessionManager = ChatSessionManager.shared
+    @State private var hoveredSessionId: UUID?
+    @State private var hoveredClaudeSessionId: String?
+    @State private var conversationList: [ChatSession] = []
+    @State private var claudeSessions: [ClaudeSessionEntry] = []
+
+    private var agentMetadata: AgentMetadata? {
+        guard let agentId = currentAgentId else { return nil }
+        return AgentRegistry.shared.getMetadata(for: agentId)
+    }
+
+    /// Check if current agent is Claude (to load from Claude Code's storage)
+    private var isClaudeAgent: Bool {
+        currentAgentId == "claude"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            sidebarHeader
+            Divider()
+            conversationListView
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+        .onAppear {
+            loadConversations()
+        }
+        .onChange(of: currentAgentId) { _, _ in
+            loadConversations()
+        }
+        .onReceive(sessionManager.objectWillChange) { _ in
+            loadConversations()
+        }
+    }
+
+    private var sidebarHeader: some View {
+        HStack {
+            if let metadata = agentMetadata {
+                AgentIconView(iconType: metadata.iconType, size: 16)
+                Text(metadata.name)
+                    .font(.system(size: 12, weight: .semibold))
+            } else {
+                Text("Conversations")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+
+            Spacer()
+
+            Button(action: onNewSession) {
+                Image(systemName: "plus")
+                    .font(.system(size: 12))
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("New conversation")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var conversationListView: some View {
+        if isClaudeAgent {
+            claudeSessionListView
+        } else {
+            customSessionListView
+        }
+    }
+
+    @ViewBuilder
+    private var claudeSessionListView: some View {
+        if claudeSessions.isEmpty {
+            emptyStateView
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                // Info banner
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 10))
+                    Text("History is read-only (resume not yet supported)")
+                        .font(.system(size: 10))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+                Divider()
+
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(claudeSessions) { session in
+                            ClaudeSessionRowView(
+                                session: session,
+                                isHovered: hoveredClaudeSessionId == session.id,
+                                onSelect: { onSelectClaudeSession(session) }
+                            )
+                            .onHover { hovering in
+                                hoveredClaudeSessionId = hovering ? session.id : nil
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var customSessionListView: some View {
+        if conversationList.isEmpty {
+            emptyStateView
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(conversationList) { session in
+                        ChatSidebarRowView(
+                            session: session,
+                            isSelected: selectedSessionId == session.id,
+                            isHovered: hoveredSessionId == session.id,
+                            onSelect: { onSelectSession(session) },
+                            onDelete: { onDeleteSession(session) }
+                        )
+                        .onHover { hovering in
+                            hoveredSessionId = hovering ? session.id : nil
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 8) {
+            Spacer()
+            Text("No conversations")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
+
+    private func loadConversations() {
+        guard let agentId = currentAgentId else {
+            print("[ChatSidebarView] loadConversations: currentAgentId is nil")
+            conversationList = []
+            claudeSessions = []
+            return
+        }
+
+        if agentId == "claude" {
+            // Load from Claude Code's storage
+            claudeSessions = ClaudeSessionStore.shared.loadSessions(repositoryPath: workingDirectory)
+            print("[ChatSidebarView] loadConversations: loaded \(claudeSessions.count) Claude sessions")
+        } else {
+            // Load from our custom storage
+            print("[ChatSidebarView] loadConversations: loading for agentId=\(agentId)")
+            conversationList = sessionManager.getConversationHistory(for: workingDirectory, agentId: agentId)
+            print("[ChatSidebarView] loadConversations: got \(conversationList.count) conversations")
+        }
+    }
+}
+
+// MARK: - Claude Session Row View
+
+struct ClaudeSessionRowView: View {
+    let session: ClaudeSessionEntry
+    let isHovered: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(ClaudeSessionStore.shared.getSessionSummary(session))
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+
+                HStack(spacing: 6) {
+                    Text(DateFormatters.relative.string(from: session.modifiedDate))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+
+                    if let branch = session.gitBranch, !branch.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 8))
+                            Text(branch)
+                                .font(.system(size: 10))
+                        }
+                        .foregroundStyle(.tertiary)
+                    }
+
+                    Spacer()
+
+                    Text("\(session.messageCount) msgs")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.quaternary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Click to view session history")
+    }
+}
+
+// MARK: - Chat Sidebar Row View
+
+struct ChatSidebarRowView: View {
+    @ObservedObject var session: ChatSession
+    let isSelected: Bool
+    let isHovered: Bool
+    let onSelect: () -> Void
+    let onDelete: () -> Void
+
+    private var activeSessions: [ChatSession] {
+        ChatSessionManager.shared.getSessions(for: session.repositoryPath)
+    }
+
+    private var isActive: Bool {
+        activeSessions.contains { $0.id == session.id }
+    }
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(session.title)
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+
+                        // Show indicator for active sessions
+                        if isActive {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+
+                    Text(DateFormatters.relative.string(from: session.updatedAt))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                if isHovered || isSelected {
+                    Button(action: onDelete) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 18, height: 18)
+                            .background(
+                                Circle()
+                                    .fill(Color.primary.opacity(0.1))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(
+                        isSelected
+                            ? Color.accentColor.opacity(0.15)
+                            : (isHovered ? Color.primary.opacity(0.05) : Color.clear)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 // MARK: - Chat Tab Bar
@@ -270,11 +645,32 @@ struct ChatTabBar: View {
     let sessions: [ChatSession]
     @Binding var selectedSessionId: UUID?
     @Binding var showingAgentPicker: Bool
+    @Binding var showingSidebar: Bool
     let onClose: (ChatSession) -> Void
     let onSelect: (String) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
+            // Sidebar toggle button
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingSidebar.toggle()
+                }
+            } label: {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 12))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+                    .foregroundStyle(showingSidebar ? .primary : .secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 8)
+            .help(showingSidebar ? "Hide sidebar" : "Show sidebar")
+
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 6)
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 2) {
                     ForEach(sessions) { session in

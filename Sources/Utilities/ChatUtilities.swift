@@ -23,6 +23,23 @@ enum DateFormatters {
         formatter.unitsStyle = .abbreviated
         return formatter
     }()
+
+    /// Convenience wrapper that returns a formatted relative date string
+    static let relative: RelativeDateFormatter = RelativeDateFormatter()
+}
+
+/// Wrapper for RelativeDateTimeFormatter with a simpler string(from:) interface
+@MainActor
+struct RelativeDateFormatter {
+    private let formatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
+    func string(from date: Date) -> String {
+        formatter.localizedString(for: date, relativeTo: Date())
+    }
 }
 
 // MARK: - Duration Formatter

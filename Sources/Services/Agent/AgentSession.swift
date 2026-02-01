@@ -11,7 +11,7 @@ import os.log
 
 // MARK: - Message Types
 
-struct MessageItem: Identifiable, Sendable {
+struct MessageItem: Identifiable, Sendable, Codable {
     let id: String
     let role: MessageRole
     var content: String
@@ -48,7 +48,7 @@ struct MessageItem: Identifiable, Sendable {
     }
 }
 
-enum MessageRole: String, Sendable {
+enum MessageRole: String, Sendable, Codable {
     case user
     case agent
     case system
@@ -148,6 +148,15 @@ class AgentSession: ObservableObject {
     // MARK: - Session Lifecycle
 
     func start(workingDirectory: String) async throws {
+        try await startSession(workingDirectory: workingDirectory, existingSessionId: nil)
+    }
+
+    /// Start a session by loading an existing session ID (for restoring from history)
+    func startWithExistingSession(workingDirectory: String, sessionId: String) async throws {
+        try await startSession(workingDirectory: workingDirectory, existingSessionId: sessionId)
+    }
+
+    private func startSession(workingDirectory: String, existingSessionId: String?) async throws {
         sessionState = .initializing
 
         guard let agentPath = AgentRegistry.shared.getAgentPath(for: agentName) else {
@@ -190,18 +199,28 @@ class AgentSession: ObservableObject {
                 _ = try? await client.authenticate(methodId: savedMethodId)
             }
 
-            let sessionResponse = try await client.newSession(cwd: workingDirectory)
-            sessionId = sessionResponse.sessionId
+            // Either load existing session or create new one
+            if let existingId = existingSessionId {
+                let loadResponse = try await client.loadSession(
+                    sessionId: SessionId(existingId),
+                    cwd: workingDirectory
+                )
+                sessionId = loadResponse.sessionId
+                logger.info("Session loaded: \(loadResponse.sessionId.value)")
+            } else {
+                let sessionResponse = try await client.newSession(cwd: workingDirectory)
+                sessionId = sessionResponse.sessionId
 
-            if let options = sessionResponse.configOptions {
-                configOptions = options
+                if let options = sessionResponse.configOptions {
+                    configOptions = options
+                }
+                logger.info("Session started: \(sessionResponse.sessionId.value)")
             }
 
             startNotificationListener()
 
             isActive = true
             sessionState = .ready
-            logger.info("Session started: \(sessionResponse.sessionId.value)")
 
             // Check for agent version updates
             startVersionCheck()
@@ -526,6 +545,11 @@ class AgentSession: ObservableObject {
                 contentBlocks: contentBlocks
             ))
         trimMessagesIfNeeded()
+    }
+
+    /// Restore messages from storage (used when restoring a session)
+    func restoreMessages(_ restoredMessages: [MessageItem]) {
+        messages = restoredMessages
     }
 
     func markLastMessageComplete() {

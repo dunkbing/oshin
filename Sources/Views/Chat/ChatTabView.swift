@@ -211,10 +211,12 @@ struct ChatTabView: View {
         guard !agentSession.isActive else { return }
         isInitializing = true
 
-        // Register agent session with manager
+        // Register agent session with manager (this also restores cached messages)
         sessionManager.setAgentSession(agentSession, for: chatSession.id)
 
         do {
+            // Always start a new session - cached messages from history are already loaded
+            // via setAgentSession. The user can continue the conversation from there.
             try await agentSession.start(workingDirectory: chatSession.repositoryPath)
         } catch {
             errorMessage = error.localizedDescription

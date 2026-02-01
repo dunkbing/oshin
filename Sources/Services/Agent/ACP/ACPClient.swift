@@ -106,6 +106,19 @@ actor ACPClient {
         return try await sendRequest(method: "session/new", params: params)
     }
 
+    func loadSession(
+        sessionId: SessionId,
+        cwd: String? = nil,
+        mcpServers: [MCPServerConfig]? = nil
+    ) async throws -> LoadSessionResponse {
+        let params = LoadSessionRequest(
+            sessionId: sessionId,
+            cwd: cwd,
+            mcpServers: mcpServers
+        )
+        return try await sendRequest(method: "session/load", params: params)
+    }
+
     func sendPrompt(sessionId: SessionId, content: [ContentBlock]) async throws
         -> SessionPromptResponse
     {
