@@ -182,6 +182,17 @@ struct GitTabHeader: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.down")
                         Text("Pull")
+                        if gitStatus.behindCount > 0 {
+                            Text("\(gitStatus.behindCount)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue)
+                                )
+                                .foregroundStyle(.white)
+                        }
                     }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.blue)
@@ -189,7 +200,9 @@ struct GitTabHeader: View {
                     .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)
-                .help("Pull from remote")
+                .help(
+                    gitStatus.behindCount > 0
+                        ? "Pull \(gitStatus.behindCount) commit(s) from remote" : "Pull from remote")
 
                 Divider()
                     .frame(height: 16)
@@ -200,6 +213,17 @@ struct GitTabHeader: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up")
                         Text("Push")
+                        if gitStatus.aheadCount > 0 {
+                            Text("\(gitStatus.aheadCount)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.green)
+                                )
+                                .foregroundStyle(.white)
+                        }
                     }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.green)
@@ -207,7 +231,7 @@ struct GitTabHeader: View {
                     .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)
-                .help("Push to remote")
+                .help(gitStatus.aheadCount > 0 ? "Push \(gitStatus.aheadCount) commit(s) to remote" : "Push to remote")
             }
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -235,6 +259,19 @@ struct GitTabHeader: View {
             .disabled(gitService.isLoading || gitService.isOperationPending)
         }
         .padding()
+        .alert(
+            "Git \(gitService.lastError?.operation ?? "Operation") Failed",
+            isPresented: Binding(
+                get: { gitService.lastError != nil },
+                set: { if !$0 { gitService.lastError = nil } }
+            )
+        ) {
+            Button("OK") {
+                gitService.lastError = nil
+            }
+        } message: {
+            Text(gitService.lastError?.message ?? "Unknown error")
+        }
     }
 }
 

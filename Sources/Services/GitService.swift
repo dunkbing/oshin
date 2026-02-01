@@ -122,6 +122,32 @@ struct BranchInfo: Identifiable, Hashable {
     }
 }
 
+// MARK: - Git Operation Error
+
+struct GitOperationError: Identifiable {
+    let id = UUID()
+    let operation: String
+    let message: String
+
+    init(operation: String, error: Error) {
+        self.operation = operation
+        // Extract meaningful message from SwiftGitX errors
+        let errorString = String(describing: error)
+        if errorString.contains("Message:") {
+            // Parse SwiftGitX error format
+            if let range = errorString.range(of: "Message:") {
+                let afterMessage = errorString[range.upperBound...]
+                let message = afterMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+                self.message = String(message.split(separator: "\n").first ?? Substring(message))
+            } else {
+                self.message = error.localizedDescription
+            }
+        } else {
+            self.message = error.localizedDescription
+        }
+    }
+}
+
 @MainActor
 class GitService: ObservableObject {
     @Published private(set) var currentStatus: GitStatus = .empty
@@ -137,6 +163,7 @@ class GitService: ObservableObject {
     @Published var selectedCommitId: String?
     @Published private(set) var branches: [BranchInfo] = []
     @Published var selectedBranch: String? = nil  // nil means "Show All"
+    @Published var lastError: GitOperationError?
 
     private var repositoryPath: String = ""
     private let logPageSize = 50
@@ -715,19 +742,26 @@ class GitService: ObservableObject {
     func fetch() {
         guard !isOperationPending else { return }
         isOperationPending = true
+        lastError = nil
 
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
+            let operationError: GitOperationError?
+
             do {
                 let url = URL(fileURLWithPath: path)
                 let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
                 try await repository.fetch()
+                operationError = nil
             } catch {
                 print("Failed to fetch: \(error)")
+                operationError = GitOperationError(operation: "Fetch", error: error)
             }
 
+            let errorToSet = operationError
             await MainActor.run { [weak self] in
                 self?.isOperationPending = false
+                self?.lastError = errorToSet
             }
             await self?.reloadStatus()
             await self?.loadBranches()
@@ -737,19 +771,26 @@ class GitService: ObservableObject {
     func pull() {
         guard !isOperationPending else { return }
         isOperationPending = true
+        lastError = nil
 
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
+            let operationError: GitOperationError?
+
             do {
                 let url = URL(fileURLWithPath: path)
                 let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
                 try await repository.pull()
+                operationError = nil
             } catch {
                 print("Failed to pull: \(error)")
+                operationError = GitOperationError(operation: "Pull", error: error)
             }
 
+            let errorToSet = operationError
             await MainActor.run { [weak self] in
                 self?.isOperationPending = false
+                self?.lastError = errorToSet
             }
             await self?.reloadStatus()
         }
@@ -758,19 +799,26 @@ class GitService: ObservableObject {
     func push() {
         guard !isOperationPending else { return }
         isOperationPending = true
+        lastError = nil
 
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
+            let operationError: GitOperationError?
+
             do {
                 let url = URL(fileURLWithPath: path)
                 let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
                 try await repository.push()
+                operationError = nil
             } catch {
                 print("Failed to push: \(error)")
+                operationError = GitOperationError(operation: "Push", error: error)
             }
 
+            let errorToSet = operationError
             await MainActor.run { [weak self] in
                 self?.isOperationPending = false
+                self?.lastError = errorToSet
             }
             await self?.reloadStatus()
         }
@@ -995,6 +1043,42 @@ class GitService: ObservableObject {
                 }
             }
 
+            // Get ahead/behind counts using git rev-list
+            var aheadCount = 0
+            var behindCount = 0
+
+            if !currentBranch.isEmpty {
+                // Use git command to get ahead/behind counts
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+                process.arguments = ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"]
+                process.currentDirectoryURL = URL(fileURLWithPath: path)
+
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = FileHandle.nullDevice
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+
+                    if process.terminationStatus == 0 {
+                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                        if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(
+                            in: .whitespacesAndNewlines)
+                        {
+                            let parts = output.split(separator: "\t")
+                            if parts.count == 2 {
+                                behindCount = Int(parts[0]) ?? 0
+                                aheadCount = Int(parts[1]) ?? 0
+                            }
+                        }
+                    }
+                } catch {
+                    // Ignore errors (e.g., no upstream configured)
+                }
+            }
+
             return GitStatus(
                 stagedFiles: stagedFiles,
                 modifiedFiles: modifiedFiles,
@@ -1002,8 +1086,8 @@ class GitService: ObservableObject {
                 untrackedFiles: untrackedFiles,
                 conflictedFiles: conflictedFiles,
                 currentBranch: currentBranch,
-                aheadCount: 0,
-                behindCount: 0,
+                aheadCount: aheadCount,
+                behindCount: behindCount,
                 additions: additions,
                 deletions: deletions
             )
