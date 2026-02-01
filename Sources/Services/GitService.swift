@@ -814,9 +814,29 @@ class GitService: ObservableObject {
 
     func loadFileDiff(for file: String) async {
         let path = repositoryPath
+        let isUntracked = currentStatus.untrackedFiles.contains(file)
+
         do {
             let diffOutput = try await Task.detached(priority: .utility) {
                 let url = URL(fileURLWithPath: path)
+
+                // For untracked files, read the file directly and show as all additions
+                if isUntracked {
+                    let fileURL = url.appendingPathComponent(file)
+                    let content = try String(contentsOf: fileURL, encoding: .utf8)
+                    let lines = content.components(separatedBy: "\n")
+
+                    var output = "diff --git a/\(file) b/\(file)\n"
+                    output += "new file\n"
+                    output += "@@ -0,0 +1,\(lines.count) @@\n"
+
+                    for line in lines {
+                        output += "+\(line)\n"
+                    }
+
+                    return output
+                }
+
                 let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
 
                 // Get diff for this specific file
