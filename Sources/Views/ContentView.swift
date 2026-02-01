@@ -156,6 +156,7 @@ struct ChatContainerView: View {
     @State private var selectedSessionId: UUID?
     @State private var showingAgentPicker = false
     @State private var showingSidebar = true
+    @State private var sidebarAgentId: String? = "claude"
 
     @AppStorage("defaultACPAgent") private var defaultACPAgent = "claude"
 
@@ -200,10 +201,10 @@ struct ChatContainerView: View {
                     if showingSidebar {
                         ChatSidebarView(
                             workingDirectory: workingDirectory,
-                            currentAgentId: selectedSession?.agentId,
+                            currentAgentId: $sidebarAgentId,
                             selectedSessionId: $selectedSessionId,
                             onNewSession: {
-                                if let agentId = selectedSession?.agentId {
+                                if let agentId = sidebarAgentId {
                                     createNewSession(agentId: agentId)
                                 }
                             },
@@ -212,6 +213,9 @@ struct ChatContainerView: View {
                             },
                             onSelectClaudeSession: { claudeSession in
                                 selectClaudeSession(claudeSession)
+                            },
+                            onSelectCodexSession: { codexSession in
+                                selectCodexSession(codexSession)
                             },
                             onDeleteSession: { session in
                                 deleteSession(session)
@@ -339,33 +343,58 @@ struct ChatContainerView: View {
         let session = sessionManager.createSessionFromClaude(claudeSession, repositoryPath: workingDirectory)
         selectedSessionId = session.id
     }
+
+    private func selectCodexSession(_ codexSession: CodexSessionEntry) {
+        // Check if we already have this session open
+        if let existing = sessions.first(where: { $0.externalSessionId == codexSession.sessionId }) {
+            selectedSessionId = existing.id
+            return
+        }
+
+        // Create a new session from the Codex session entry (loads messages from history)
+        let session = sessionManager.createSessionFromCodex(codexSession, repositoryPath: workingDirectory)
+        selectedSessionId = session.id
+    }
 }
 
 // MARK: - Chat Sidebar View
 
 struct ChatSidebarView: View {
     let workingDirectory: String
-    let currentAgentId: String?
+    @Binding var currentAgentId: String?
     @Binding var selectedSessionId: UUID?
     let onNewSession: () -> Void
     let onSelectSession: (ChatSession) -> Void
     let onSelectClaudeSession: (ClaudeSessionEntry) -> Void
+    let onSelectCodexSession: (CodexSessionEntry) -> Void
     let onDeleteSession: (ChatSession) -> Void
 
     @ObservedObject private var sessionManager = ChatSessionManager.shared
     @State private var hoveredSessionId: UUID?
     @State private var hoveredClaudeSessionId: String?
+    @State private var hoveredCodexSessionId: String?
     @State private var conversationList: [ChatSession] = []
     @State private var claudeSessions: [ClaudeSessionEntry] = []
+    @State private var codexSessions: [CodexSessionEntry] = []
 
     private var agentMetadata: AgentMetadata? {
         guard let agentId = currentAgentId else { return nil }
         return AgentRegistry.shared.getMetadata(for: agentId)
     }
 
+    /// Get list of available agents for the picker
+    private var availableAgents: [AgentMetadata] {
+        AgentRegistry.shared.getEnabledAgents()
+    }
+
     /// Check if current agent is Claude (to load from Claude Code's storage)
     private var isClaudeAgent: Bool {
         currentAgentId == "claude"
+    }
+
+    /// Check if current agent is Codex
+    private var isCodexAgent: Bool {
+        currentAgentId == "codex"
     }
 
     var body: some View {
@@ -388,14 +417,39 @@ struct ChatSidebarView: View {
 
     private var sidebarHeader: some View {
         HStack {
-            if let metadata = agentMetadata {
-                AgentIconView(iconType: metadata.iconType, size: 16)
-                Text(metadata.name)
-                    .font(.system(size: 12, weight: .semibold))
-            } else {
-                Text("Conversations")
-                    .font(.system(size: 12, weight: .semibold))
+            Menu {
+                ForEach(availableAgents, id: \.id) { agent in
+                    Button {
+                        currentAgentId = agent.id
+                    } label: {
+                        HStack {
+                            AgentIconView(iconType: agent.iconType, size: 14)
+                            Text(agent.name)
+                            if currentAgentId == agent.id {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if let metadata = agentMetadata {
+                        AgentIconView(iconType: metadata.iconType, size: 16)
+                        Text(metadata.name)
+                            .font(.system(size: 12, weight: .semibold))
+                    } else {
+                        Text("Select Agent")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
             }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
 
             Spacer()
 
@@ -416,6 +470,8 @@ struct ChatSidebarView: View {
     private var conversationListView: some View {
         if isClaudeAgent {
             claudeSessionListView
+        } else if isCodexAgent {
+            codexSessionListView
         } else {
             customSessionListView
         }
@@ -426,36 +482,45 @@ struct ChatSidebarView: View {
         if claudeSessions.isEmpty {
             emptyStateView
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                // Info banner
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 10))
-                    Text("History is read-only (resume not yet supported)")
-                        .font(.system(size: 10))
-                }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-
-                Divider()
-
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(claudeSessions) { session in
-                            ClaudeSessionRowView(
-                                session: session,
-                                isHovered: hoveredClaudeSessionId == session.id,
-                                onSelect: { onSelectClaudeSession(session) }
-                            )
-                            .onHover { hovering in
-                                hoveredClaudeSessionId = hovering ? session.id : nil
-                            }
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(claudeSessions) { session in
+                        ClaudeSessionRowView(
+                            session: session,
+                            isHovered: hoveredClaudeSessionId == session.id,
+                            onSelect: { onSelectClaudeSession(session) }
+                        )
+                        .onHover { hovering in
+                            hoveredClaudeSessionId = hovering ? session.id : nil
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var codexSessionListView: some View {
+        if codexSessions.isEmpty {
+            emptyStateView
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(codexSessions) { session in
+                        CodexSessionRowView(
+                            session: session,
+                            isHovered: hoveredCodexSessionId == session.id,
+                            onSelect: { onSelectCodexSession(session) }
+                        )
+                        .onHover { hovering in
+                            hoveredCodexSessionId = hovering ? session.id : nil
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -501,13 +566,23 @@ struct ChatSidebarView: View {
             print("[ChatSidebarView] loadConversations: currentAgentId is nil")
             conversationList = []
             claudeSessions = []
+            codexSessions = []
             return
         }
+
+        // Clear all lists first
+        conversationList = []
+        claudeSessions = []
+        codexSessions = []
 
         if agentId == "claude" {
             // Load from Claude Code's storage
             claudeSessions = ClaudeSessionStore.shared.loadSessions(repositoryPath: workingDirectory)
             print("[ChatSidebarView] loadConversations: loaded \(claudeSessions.count) Claude sessions")
+        } else if agentId == "codex" {
+            // Load from Codex's storage (filtered by repository path)
+            codexSessions = CodexSessionStore.shared.loadSessions(repositoryPath: workingDirectory)
+            print("[ChatSidebarView] loadConversations: loaded \(codexSessions.count) Codex sessions")
         } else {
             // Load from our custom storage
             print("[ChatSidebarView] loadConversations: loading for agentId=\(agentId)")
@@ -563,7 +638,47 @@ struct ClaudeSessionRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Click to view session history")
+        .help("Resume session")
+    }
+}
+
+// MARK: - Codex Session Row View
+
+struct CodexSessionRowView: View {
+    let session: CodexSessionEntry
+    let isHovered: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(CodexSessionStore.shared.getSessionSummary(session))
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+
+                HStack(spacing: 6) {
+                    Text(DateFormatters.relative.string(from: session.lastModified))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+
+                    Spacer()
+
+                    Text("\(session.messageCount) msgs")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.quaternary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Resume session")
     }
 }
 

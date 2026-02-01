@@ -116,6 +116,7 @@ class AgentSession: ObservableObject {
 
     let agentName: String
     private(set) var sessionId: SessionId?
+    private(set) var workingDirectory: String?
     private var acpClient: ACPClient?
     private var notificationTask: Task<Void, Never>?
     private var versionCheckTask: Task<Void, Never>?
@@ -153,6 +154,7 @@ class AgentSession: ObservableObject {
 
     private func startSession(workingDirectory: String, resumeSessionId: String?) async throws {
         sessionState = .initializing
+        self.workingDirectory = workingDirectory
 
         guard let agentPath = AgentRegistry.shared.getAgentPath(for: agentName) else {
             sessionState = .error("Agent not found: \(agentName)")
@@ -195,34 +197,36 @@ class AgentSession: ObservableObject {
             }
 
             // Try to resume existing session or create new one
+            // Both Claude and Codex support session/* methods (Codex advertises loadSession: true)
             if let existingId = resumeSessionId {
                 var resumed = false
 
-                // Try session/resume first (matches Claude's advertised capability)
+                // Try session/load first (both Claude and Codex support this)
                 do {
-                    let resumeResponse = try await client.resumeSession(
+                    let loadResponse = try await client.loadSession(
                         sessionId: SessionId(existingId),
-                        cwd: workingDirectory
+                        cwd: workingDirectory,
+                        mcpServers: []  // Codex requires this field
                     )
-                    sessionId = resumeResponse.sessionId
-                    logger.info("Session resumed: \(resumeResponse.sessionId.value)")
+                    sessionId = loadResponse.sessionId
+                    logger.info("Session loaded: \(loadResponse.sessionId.value)")
                     resumed = true
                 } catch {
-                    logger.warning("session/resume failed: \(error.localizedDescription), trying session/load")
+                    logger.warning("session/load failed: \(error.localizedDescription), trying session/resume")
                 }
 
-                // Fall back to session/load
+                // Fall back to session/resume (Claude supports this)
                 if !resumed {
                     do {
-                        let loadResponse = try await client.loadSession(
+                        let resumeResponse = try await client.resumeSession(
                             sessionId: SessionId(existingId),
                             cwd: workingDirectory
                         )
-                        sessionId = loadResponse.sessionId
-                        logger.info("Session loaded: \(loadResponse.sessionId.value)")
+                        sessionId = resumeResponse.sessionId
+                        logger.info("Session resumed: \(resumeResponse.sessionId.value)")
                         resumed = true
                     } catch {
-                        logger.warning("session/load failed: \(error.localizedDescription), creating new session")
+                        logger.warning("session/resume failed: \(error.localizedDescription), creating new session")
                     }
                 }
 
@@ -308,6 +312,7 @@ class AgentSession: ObservableObject {
         isStreaming = true
 
         do {
+            // Both Claude and Codex use session/prompt
             _ = try await client.sendPrompt(sessionId: sessionId, content: contentBlocks)
 
             Task { @MainActor in

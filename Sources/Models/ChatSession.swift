@@ -66,6 +66,23 @@ class ChatSession: ObservableObject, Identifiable {
         self.externalSessionId = claudeSession.sessionId
     }
 
+    /// Create a session from Codex's session entry (loads messages from session file)
+    init(from codexSession: CodexSessionEntry, repositoryPath: String) {
+        self.id = UUID()
+        self.repositoryPath = repositoryPath
+        self.agentId = "codex"
+        self.title = CodexSessionStore.shared.getSessionSummary(codexSession)
+        self.createdAt = codexSession.createdAt
+        self.updatedAt = codexSession.lastModified
+        self.isRestored = true
+        // Load messages from the session file
+        self.cachedMessages = CodexSessionStore.shared.loadSessionMessages(
+            codexSession.sessionId,
+            filePath: codexSession.filePath
+        )
+        self.externalSessionId = codexSession.sessionId
+    }
+
     /// Convert to storable format with current messages
     func toStored(messages: [MessageItem]) -> StoredConversation {
         StoredConversation(

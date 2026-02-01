@@ -103,6 +103,25 @@ class ChatSessionManager: ObservableObject {
         return session
     }
 
+    /// Create a session from Codex's session history
+    func createSessionFromCodex(_ codexSession: CodexSessionEntry, repositoryPath: String) -> ChatSession {
+        // Check if we already have an active session with this external ID
+        if let existingSessions = sessions[repositoryPath] {
+            if let existing = existingSessions.first(where: { $0.externalSessionId == codexSession.sessionId }) {
+                return existing
+            }
+        }
+
+        let session = ChatSession(from: codexSession, repositoryPath: repositoryPath)
+
+        if sessions[repositoryPath] == nil {
+            sessions[repositoryPath] = []
+        }
+        sessions[repositoryPath]?.append(session)
+
+        return session
+    }
+
     func removeSession(_ session: ChatSession) {
         let path = session.repositoryPath
 

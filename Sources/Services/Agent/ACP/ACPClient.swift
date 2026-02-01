@@ -133,6 +133,47 @@ actor ACPClient {
         return try await sendRequest(method: "session/resume", params: params)
     }
 
+    // MARK: - Codex Thread Methods
+
+    /// Resume a thread using Codex's thread/resume method
+    /// Codex uses thread/* methods instead of session/* methods
+    func resumeThread(threadId: String) async throws -> AnyCodable {
+        let params = ["threadId": threadId]
+        return try await sendRequest(method: "thread/resume", params: params)
+    }
+
+    /// List threads using Codex's thread/list method
+    func listThreads(cursor: String? = nil, limit: Int? = nil) async throws -> AnyCodable {
+        var params: [String: Any] = [:]
+        if let cursor = cursor {
+            params["cursor"] = cursor
+        }
+        if let limit = limit {
+            params["limit"] = limit
+        }
+        return try await sendRequest(method: "thread/list", params: AnyCodable(params))
+    }
+
+    /// Start a new thread using Codex's thread/start method
+    func startThread(cwd: String) async throws -> AnyCodable {
+        let params: [String: Any] = [
+            "cwd": cwd,
+            "approvalPolicy": "on-request",
+        ]
+        return try await sendRequest(method: "thread/start", params: AnyCodable(params))
+    }
+
+    /// Send a message to a thread using Codex's turn/start method
+    func startTurn(threadId: String, input: String, cwd: String) async throws -> AnyCodable {
+        let params: [String: Any] = [
+            "threadId": threadId,
+            "input": [["type": "text", "text": input]],
+            "cwd": cwd,
+            "approvalPolicy": "on-request",
+        ]
+        return try await sendRequest(method: "turn/start", params: AnyCodable(params), timeout: .seconds(600))
+    }
+
     func sendPrompt(sessionId: SessionId, content: [ContentBlock]) async throws
         -> SessionPromptResponse
     {
