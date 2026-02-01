@@ -122,6 +122,15 @@ struct BranchInfo: Identifiable, Hashable {
     }
 }
 
+// MARK: - Remote Info Model
+
+struct RemoteInfo: Identifiable, Equatable {
+    var id: String { name }
+    let name: String
+    let fetchURL: String
+    let pushURL: String
+}
+
 // MARK: - Git Operation Error
 
 struct GitOperationError: Identifiable {
@@ -163,6 +172,7 @@ class GitService: ObservableObject {
     @Published var selectedCommitId: String?
     @Published private(set) var branches: [BranchInfo] = []
     @Published var selectedBranch: String? = nil  // nil means "Show All"
+    @Published private(set) var remotes: [RemoteInfo] = []
     @Published var lastError: GitOperationError?
 
     private var repositoryPath: String = ""
@@ -182,9 +192,11 @@ class GitService: ObservableObject {
         selectedCommitDetail = nil
         selectedBranch = nil
         branches = []
+        remotes = []
         Task {
             await reloadStatus()
             await loadBranches()
+            await loadRemotes()
         }
     }
 
@@ -543,6 +555,138 @@ class GitService: ObservableObject {
         selectedCommitId = nil
         selectedCommitDetail = nil
         await loadCommitLog()
+    }
+
+    // MARK: - Remotes
+
+    func loadRemotes() async {
+        guard !repositoryPath.isEmpty else { return }
+
+        do {
+            let remoteList = try await fetchRemotes()
+            remotes = remoteList
+        } catch {
+            print("Failed to load remotes: \(error)")
+            remotes = []
+        }
+    }
+
+    private func fetchRemotes() async throws -> [RemoteInfo] {
+        let path = repositoryPath
+        return try await Task.detached(priority: .utility) {
+            // Use git remote -v to get both fetch and push URLs
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            process.arguments = ["remote", "-v"]
+            process.currentDirectoryURL = URL(fileURLWithPath: path)
+
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = FileHandle.nullDevice
+
+            try process.run()
+            process.waitUntilExit()
+
+            guard process.terminationStatus == 0 else { return [] }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else { return [] }
+
+            // Parse output: "origin  https://github.com/user/repo.git (fetch)"
+            var remoteDict: [String: (fetch: String, push: String)] = [:]
+
+            for line in output.split(separator: "\n") {
+                let parts = line.split(whereSeparator: { $0.isWhitespace })
+                guard parts.count >= 3 else { continue }
+
+                let name = String(parts[0])
+                let url = String(parts[1])
+                let type = String(parts[2])
+
+                if type.contains("fetch") {
+                    var entry = remoteDict[name] ?? (fetch: "", push: "")
+                    entry.fetch = url
+                    remoteDict[name] = entry
+                } else if type.contains("push") {
+                    var entry = remoteDict[name] ?? (fetch: "", push: "")
+                    entry.push = url
+                    remoteDict[name] = entry
+                }
+            }
+
+            return remoteDict.map { name, urls in
+                RemoteInfo(
+                    name: name,
+                    fetchURL: urls.fetch,
+                    pushURL: urls.push.isEmpty ? urls.fetch : urls.push
+                )
+            }.sorted { $0.name < $1.name }
+        }.value
+    }
+
+    func addRemote(name: String, url: String) {
+        guard !isOperationPending, !name.isEmpty, !url.isEmpty else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["remote", "add", name, url], in: path)
+                print("Added remote '\(name)' with URL '\(url)'")
+            } catch {
+                print("Failed to add remote: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.loadRemotes()
+        }
+    }
+
+    func deleteRemote(name: String) {
+        guard !isOperationPending, !name.isEmpty else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["remote", "remove", name], in: path)
+                print("Deleted remote '\(name)'")
+            } catch {
+                print("Failed to delete remote: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.loadRemotes()
+        }
+    }
+
+    func updateRemoteURL(name: String, url: String, isPushURL: Bool) {
+        guard !isOperationPending, !name.isEmpty, !url.isEmpty else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                // Use git command for setting push URL specifically
+                if isPushURL {
+                    try GitService.runGitCommand(["remote", "set-url", "--push", name, url], in: path)
+                } else {
+                    try GitService.runGitCommand(["remote", "set-url", name, url], in: path)
+                }
+                print("Updated remote '\(name)' \(isPushURL ? "push" : "fetch") URL to '\(url)'")
+            } catch {
+                print("Failed to update remote URL: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.loadRemotes()
+        }
     }
 
     // MARK: - Status

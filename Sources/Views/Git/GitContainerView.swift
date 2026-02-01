@@ -73,6 +73,7 @@ struct GitTabHeader: View {
 
     @State private var showingBranchPicker = false
     @State private var showingNewBranch = false
+    @State private var showingRemoteConfig = false
 
     private var gitStatus: GitStatus { gitService.currentStatus }
 
@@ -232,6 +233,25 @@ struct GitTabHeader: View {
                 }
                 .buttonStyle(.plain)
                 .help(gitStatus.aheadCount > 0 ? "Push \(gitStatus.aheadCount) commit(s) to remote" : "Push to remote")
+
+                Divider()
+                    .frame(height: 16)
+
+                // Remote configuration button
+                Button {
+                    showingRemoteConfig = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+                .help("Remote Configuration")
+                .popover(isPresented: $showingRemoteConfig, arrowEdge: .bottom) {
+                    RemoteConfigurationPopover()
+                }
             }
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -470,6 +490,374 @@ struct NewBranchPopover: View {
             Task {
                 await gitService.loadBranches()
             }
+        }
+    }
+}
+
+// MARK: - Remote Configuration Popover
+
+struct RemoteConfigurationPopover: View {
+    @EnvironmentObject private var gitService: GitService
+
+    @State private var showingAddRemote = false
+    @State private var editingRemote: (name: String, url: String, isPush: Bool)?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            Text("Remote Configuration")
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.vertical, 10)
+
+            Divider()
+
+            if gitService.remotes.isEmpty {
+                // Empty state
+                VStack(spacing: 8) {
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.secondary)
+                    Text("No remotes configured")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(height: 80)
+            } else {
+                // Table header
+                HStack(spacing: 0) {
+                    Text("Remote")
+                        .frame(width: 70, alignment: .leading)
+                    Text("URL")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Type")
+                        .frame(width: 50, alignment: .leading)
+                    Text("Action")
+                        .frame(width: 50, alignment: .center)
+                }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+                Divider()
+
+                // Remote list
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(gitService.remotes) { remote in
+                            RemoteRowView(
+                                remote: remote,
+                                onEdit: { url, isPush in
+                                    editingRemote = (remote.name, url, isPush)
+                                },
+                                onDelete: {
+                                    gitService.deleteRemote(name: remote.name)
+                                },
+                                onFetch: {
+                                    gitService.fetch()
+                                }
+                            )
+
+                            if remote.id != gitService.remotes.last?.id {
+                                Divider()
+                                    .padding(.leading, 12)
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 200)
+            }
+
+            Divider()
+
+            // Add remote button
+            Button {
+                showingAddRemote = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11))
+                    Text("Add Remote")
+                        .font(.system(size: 12))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(width: 420)
+        .onAppear {
+            Task {
+                await gitService.loadRemotes()
+            }
+        }
+        .sheet(isPresented: $showingAddRemote) {
+            AddRemoteSheet { name, url in
+                gitService.addRemote(name: name, url: url)
+                showingAddRemote = false
+            } onCancel: {
+                showingAddRemote = false
+            }
+        }
+        .sheet(
+            item: Binding(
+                get: {
+                    if let editing = editingRemote {
+                        return EditingRemote(name: editing.name, url: editing.url, isPush: editing.isPush)
+                    }
+                    return nil
+                },
+                set: { _ in editingRemote = nil }
+            )
+        ) { editing in
+            EditRemoteURLSheet(
+                remoteName: editing.name,
+                currentURL: editing.url,
+                isPushURL: editing.isPush
+            ) { newURL in
+                gitService.updateRemoteURL(name: editing.name, url: newURL, isPushURL: editing.isPush)
+                editingRemote = nil
+            } onCancel: {
+                editingRemote = nil
+            }
+        }
+    }
+}
+
+// Helper for sheet binding
+private struct EditingRemote: Identifiable {
+    let id = UUID()
+    let name: String
+    let url: String
+    let isPush: Bool
+}
+
+// MARK: - Remote Row View
+
+struct RemoteRowView: View {
+    let remote: RemoteInfo
+    let onEdit: (String, Bool) -> Void
+    let onDelete: () -> Void
+    let onFetch: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Fetch URL row
+            HStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "eye")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text(remote.name)
+                        .font(.system(size: 12))
+                }
+                .frame(width: 70, alignment: .leading)
+
+                Text(remote.fetchURL)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Fetch")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 50, alignment: .leading)
+
+                HStack(spacing: 4) {
+                    Button {
+                        onFetch()
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 10))
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Fetch from remote")
+
+                    Button {
+                        onEdit(remote.fetchURL, false)
+                    } label: {
+                        Image(systemName: "link")
+                            .font(.system(size: 10))
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit fetch URL")
+                }
+                .frame(width: 50)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+
+            // Push URL row
+            HStack(spacing: 0) {
+                Text("")
+                    .frame(width: 70, alignment: .leading)
+
+                Text(remote.pushURL)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Push")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 50, alignment: .leading)
+
+                HStack(spacing: 4) {
+                    Button {
+                        onEdit(remote.pushURL, true)
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10))
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit push URL")
+
+                    Button {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.red.opacity(0.8))
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete remote")
+                }
+                .frame(width: 50)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+        }
+        .background(isHovering ? Color.primary.opacity(0.04) : Color.clear)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+    }
+}
+
+// MARK: - Add Remote Sheet
+
+struct AddRemoteSheet: View {
+    let onCreate: (String, String) -> Void
+    let onCancel: () -> Void
+
+    @State private var remoteName = ""
+    @State private var remoteURL = ""
+
+    private var isValid: Bool {
+        !remoteName.trimmingCharacters(in: .whitespaces).isEmpty
+            && !remoteURL.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Add Remote")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Name")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                TextField("origin", text: $remoteName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("URL")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                TextField("https://github.com/user/repo.git", text: $remoteURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Add") {
+                    onCreate(
+                        remoteName.trimmingCharacters(in: .whitespaces),
+                        remoteURL.trimmingCharacters(in: .whitespaces)
+                    )
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!isValid)
+            }
+        }
+        .padding(20)
+        .frame(width: 350)
+    }
+}
+
+// MARK: - Edit Remote URL Sheet
+
+struct EditRemoteURLSheet: View {
+    let remoteName: String
+    let currentURL: String
+    let isPushURL: Bool
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var newURL: String = ""
+
+    private var isValid: Bool {
+        !newURL.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Edit \(isPushURL ? "Push" : "Fetch") URL")
+                .font(.headline)
+
+            Text("Remote: \(remoteName)")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("URL")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                TextField("https://github.com/user/repo.git", text: $newURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Save") {
+                    onSave(newURL.trimmingCharacters(in: .whitespaces))
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!isValid)
+            }
+        }
+        .padding(20)
+        .frame(width: 350)
+        .onAppear {
+            newURL = currentURL
         }
     }
 }
