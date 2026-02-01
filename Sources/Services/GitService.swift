@@ -710,6 +710,85 @@ class GitService: ObservableObject {
         }
     }
 
+    // MARK: - Remote Operations
+
+    func fetch() {
+        guard !isOperationPending else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["fetch", "--all"], in: path)
+            } catch {
+                print("Failed to fetch: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+        }
+    }
+
+    func pull() {
+        guard !isOperationPending else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["pull"], in: path)
+            } catch {
+                print("Failed to pull: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+        }
+    }
+
+    func push() {
+        guard !isOperationPending else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["push"], in: path)
+            } catch {
+                print("Failed to push: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+        }
+    }
+
+    func checkout(branch: String) {
+        guard !isOperationPending else { return }
+        isOperationPending = true
+
+        let path = repositoryPath
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                try GitService.runGitCommand(["checkout", branch], in: path)
+            } catch {
+                print("Failed to checkout: \(error)")
+            }
+
+            await MainActor.run { [weak self] in
+                self?.isOperationPending = false
+            }
+            await self?.reloadStatus()
+            await self?.loadBranches()
+        }
+    }
+
     // MARK: - Diff
 
     func loadFileDiff(for file: String) async {
