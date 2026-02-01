@@ -147,16 +147,11 @@ class AgentSession: ObservableObject {
 
     // MARK: - Session Lifecycle
 
-    func start(workingDirectory: String) async throws {
-        try await startSession(workingDirectory: workingDirectory, existingSessionId: nil)
+    func start(workingDirectory: String, resumeSessionId: String? = nil) async throws {
+        try await startSession(workingDirectory: workingDirectory, resumeSessionId: resumeSessionId)
     }
 
-    /// Start a session by loading an existing session ID (for restoring from history)
-    func startWithExistingSession(workingDirectory: String, sessionId: String) async throws {
-        try await startSession(workingDirectory: workingDirectory, existingSessionId: sessionId)
-    }
-
-    private func startSession(workingDirectory: String, existingSessionId: String?) async throws {
+    private func startSession(workingDirectory: String, resumeSessionId: String?) async throws {
         sessionState = .initializing
 
         guard let agentPath = AgentRegistry.shared.getAgentPath(for: agentName) else {
@@ -199,14 +194,48 @@ class AgentSession: ObservableObject {
                 _ = try? await client.authenticate(methodId: savedMethodId)
             }
 
-            // Either load existing session or create new one
-            if let existingId = existingSessionId {
-                let loadResponse = try await client.loadSession(
-                    sessionId: SessionId(existingId),
-                    cwd: workingDirectory
-                )
-                sessionId = loadResponse.sessionId
-                logger.info("Session loaded: \(loadResponse.sessionId.value)")
+            // Try to resume existing session or create new one
+            if let existingId = resumeSessionId {
+                var resumed = false
+
+                // Try session/resume first (matches Claude's advertised capability)
+                do {
+                    let resumeResponse = try await client.resumeSession(
+                        sessionId: SessionId(existingId),
+                        cwd: workingDirectory
+                    )
+                    sessionId = resumeResponse.sessionId
+                    logger.info("Session resumed: \(resumeResponse.sessionId.value)")
+                    resumed = true
+                } catch {
+                    logger.warning("session/resume failed: \(error.localizedDescription), trying session/load")
+                }
+
+                // Fall back to session/load
+                if !resumed {
+                    do {
+                        let loadResponse = try await client.loadSession(
+                            sessionId: SessionId(existingId),
+                            cwd: workingDirectory
+                        )
+                        sessionId = loadResponse.sessionId
+                        logger.info("Session loaded: \(loadResponse.sessionId.value)")
+                        resumed = true
+                    } catch {
+                        logger.warning("session/load failed: \(error.localizedDescription), creating new session")
+                    }
+                }
+
+                // Fall back to new session
+                if !resumed {
+                    let sessionResponse = try await client.newSession(cwd: workingDirectory)
+                    sessionId = sessionResponse.sessionId
+
+                    if let options = sessionResponse.configOptions {
+                        configOptions = options
+                    }
+                    logger.info("New session started (resume not supported): \(sessionResponse.sessionId.value)")
+                }
             } else {
                 let sessionResponse = try await client.newSession(cwd: workingDirectory)
                 sessionId = sessionResponse.sessionId

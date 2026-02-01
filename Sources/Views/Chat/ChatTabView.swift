@@ -215,9 +215,14 @@ struct ChatTabView: View {
         sessionManager.setAgentSession(agentSession, for: chatSession.id)
 
         do {
-            // Always start a new session - cached messages from history are already loaded
-            // via setAgentSession. The user can continue the conversation from there.
-            try await agentSession.start(workingDirectory: chatSession.repositoryPath)
+            if let externalId = chatSession.externalSessionId {
+                try await agentSession.start(
+                    workingDirectory: chatSession.repositoryPath,
+                    resumeSessionId: externalId
+                )
+            } else {
+                try await agentSession.start(workingDirectory: chatSession.repositoryPath)
+            }
         } catch {
             errorMessage = error.localizedDescription
             showingError = true

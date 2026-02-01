@@ -119,6 +119,20 @@ actor ACPClient {
         return try await sendRequest(method: "session/load", params: params)
     }
 
+    /// Resume a session using the session/resume method
+    /// Claude Code advertises "resume" capability - try this if session/load fails
+    func resumeSession(
+        sessionId: SessionId,
+        cwd: String? = nil
+    ) async throws -> LoadSessionResponse {
+        let params = LoadSessionRequest(
+            sessionId: sessionId,
+            cwd: cwd,
+            mcpServers: nil
+        )
+        return try await sendRequest(method: "session/resume", params: params)
+    }
+
     func sendPrompt(sessionId: SessionId, content: [ContentBlock]) async throws
         -> SessionPromptResponse
     {
