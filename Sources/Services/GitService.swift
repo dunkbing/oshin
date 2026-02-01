@@ -719,7 +719,9 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                try GitService.runGitCommand(["fetch", "--all"], in: path)
+                let url = URL(fileURLWithPath: path)
+                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                try await repository.fetch()
             } catch {
                 print("Failed to fetch: \(error)")
             }
@@ -728,6 +730,7 @@ class GitService: ObservableObject {
                 self?.isOperationPending = false
             }
             await self?.reloadStatus()
+            await self?.loadBranches()
         }
     }
 
@@ -738,7 +741,9 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                try GitService.runGitCommand(["pull"], in: path)
+                let url = URL(fileURLWithPath: path)
+                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                try await repository.pull()
             } catch {
                 print("Failed to pull: \(error)")
             }
@@ -757,7 +762,9 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                try GitService.runGitCommand(["push"], in: path)
+                let url = URL(fileURLWithPath: path)
+                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                try await repository.push()
             } catch {
                 print("Failed to push: \(error)")
             }
@@ -769,14 +776,28 @@ class GitService: ObservableObject {
         }
     }
 
-    func checkout(branch: String) {
+    func checkout(branch branchName: String) {
         guard !isOperationPending else { return }
         isOperationPending = true
 
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                try GitService.runGitCommand(["checkout", branch], in: path)
+                let url = URL(fileURLWithPath: path)
+                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+
+                // Try local branch first, then remote
+                let branch: SwiftGitX.Branch? =
+                    (try? repository.branch.get(named: branchName, type: .local))
+                    ?? (try? repository.branch.get(named: branchName, type: .remote))
+
+                if let branch = branch {
+                    try repository.switch(to: branch)
+                } else {
+                    throw NSError(
+                        domain: "GitService", code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Branch not found: \(branchName)"])
+                }
             } catch {
                 print("Failed to checkout: \(error)")
             }

@@ -1,4 +1,5 @@
 import SwiftData
+import SwiftGitX
 import SwiftUI
 
 enum AddRepositoryMode: String, CaseIterable {
@@ -27,6 +28,8 @@ struct RepositoryAddSheet: View {
     @State private var repositoryName = ""
     @State private var isProcessing = false
     @State private var errorMessage: String?
+    @State private var cloneProgress: Double = 0
+    @State private var cloneStatus: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -149,6 +152,7 @@ struct RepositoryAddSheet: View {
 
             TextField("https://github.com/user/repo.git", text: $cloneURL)
                 .textFieldStyle(.roundedBorder)
+                .disabled(isProcessing)
 
             Text("Destination")
                 .font(.headline)
@@ -162,11 +166,24 @@ struct RepositoryAddSheet: View {
                 Button("Choose...") {
                     selectCloneDestination()
                 }
+                .disabled(isProcessing)
             }
 
             Text("The repository will be cloned into a new folder at this location.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if isProcessing {
+                VStack(alignment: .leading, spacing: 8) {
+                    ProgressView(value: cloneProgress)
+                        .progressViewStyle(.linear)
+
+                    Text(cloneStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 8)
+            }
         }
     }
 
@@ -310,43 +327,40 @@ struct RepositoryAddSheet: View {
     }
 
     private func cloneRepository(url: String, to path: String) async throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["clone", url, path]
+        guard let remoteURL = URL(string: url) else {
+            throw NSError(domain: "RepositoryAdd", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
 
-        let pipe = Pipe()
-        process.standardError = pipe
+        let localURL = URL(fileURLWithPath: path)
 
-        try process.run()
-        process.waitUntilExit()
+        await MainActor.run {
+            cloneProgress = 0
+            cloneStatus = "Connecting..."
+        }
 
-        if process.terminationStatus != 0 {
-            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
-            let errorString = String(data: errorData, encoding: .utf8) ?? "Clone failed"
-            throw NSError(domain: "RepositoryAdd", code: 1, userInfo: [NSLocalizedDescriptionKey: errorString])
+        _ = try await SwiftGitX.Repository.clone(
+            from: remoteURL,
+            to: localURL
+        ) { progress in
+            Task { @MainActor in
+                let received = progress.receivedObjects
+                let total = progress.totalObjects
+                if total > 0 {
+                    cloneProgress = Double(received) / Double(total)
+                    cloneStatus = "Receiving objects: \(received)/\(total)"
+                }
+            }
+        }
+
+        await MainActor.run {
+            cloneProgress = 1.0
+            cloneStatus = "Complete"
         }
     }
 
     private func createRepository(at path: String) async throws {
-        // Create directory
-        try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
-
-        // Initialize git repo
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["init"]
-        process.currentDirectoryURL = URL(fileURLWithPath: path)
-
-        let pipe = Pipe()
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus != 0 {
-            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
-            let errorString = String(data: errorData, encoding: .utf8) ?? "Init failed"
-            throw NSError(domain: "RepositoryAdd", code: 1, userInfo: [NSLocalizedDescriptionKey: errorString])
-        }
+        let url = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        _ = try SwiftGitX.Repository.create(at: url)
     }
 }
