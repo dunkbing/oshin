@@ -1,6 +1,6 @@
 //
 //  DiffTypes.swift
-//  agentmonitor
+//  oshin
 //
 //  Shared diff line types and models
 //

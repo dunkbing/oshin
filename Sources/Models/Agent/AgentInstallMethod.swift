@@ -1,6 +1,6 @@
 //
 //  AgentInstallMethod.swift
-//  agentmonitor
+//  oshin
 //
 //  Installation method for agents
 //

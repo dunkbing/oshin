@@ -1,6 +1,6 @@
 //
 //  GitCommitSection.swift
-//  agentmonitor
+//  oshin
 //
 //  Commit message input and button
 //

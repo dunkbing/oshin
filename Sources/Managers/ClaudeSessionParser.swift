@@ -1,6 +1,6 @@
 //
 //  ClaudeSessionParser.swift
-//  agentmonitor
+//  oshin
 //
 //  Parses Claude Code's JSONL session files to extract messages
 //

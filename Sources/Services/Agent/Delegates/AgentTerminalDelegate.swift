@@ -1,6 +1,6 @@
 //
 //  AgentTerminalDelegate.swift
-//  agentmonitor
+//  oshin
 //
 //  Handles terminal operations for agent sessions
 //

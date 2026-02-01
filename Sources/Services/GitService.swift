@@ -1,6 +1,6 @@
 //
 //  GitService.swift
-//  agentmonitor
+//  oshin
 //
 //  Git operations service using SwiftGitX
 //

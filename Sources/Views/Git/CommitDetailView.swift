@@ -1,6 +1,6 @@
 //
 //  CommitDetailView.swift
-//  agentmonitor
+//  oshin
 //
 //  View for displaying commit details with file changes and diffs
 //

@@ -1,6 +1,6 @@
 //
 //  ACPRequestRouter.swift
-//  agentmonitor
+//  oshin
 //
 //  Routes incoming ACP requests to appropriate handlers
 //
@@ -22,7 +22,7 @@ actor ACPRequestRouter {
         self.encoder = encoder
         self.decoder = decoder
         self.logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "ACPRequestRouter"
         )
     }

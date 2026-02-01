@@ -1,6 +1,6 @@
 //
 //  TerminalSession.swift
-//  agentmonitor
+//  oshin
 //
 //  In-memory terminal session model
 //

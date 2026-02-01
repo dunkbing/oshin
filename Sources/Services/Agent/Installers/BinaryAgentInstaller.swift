@@ -1,6 +1,6 @@
 //
 //  BinaryAgentInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  Binary installation from direct URLs
 //

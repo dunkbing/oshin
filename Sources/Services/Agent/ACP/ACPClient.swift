@@ -1,6 +1,6 @@
 //
 //  ACPClient.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent Client Protocol client - manages subprocess communication
 //
@@ -32,7 +32,7 @@ actor ACPClient {
         encoder.outputFormatting = .withoutEscapingSlashes
         decoder = JSONDecoder()
         logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "ACPClient"
         )
         processManager = ACPProcessManager(encoder: encoder, decoder: decoder)

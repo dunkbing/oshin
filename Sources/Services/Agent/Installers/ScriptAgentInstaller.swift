@@ -1,6 +1,6 @@
 //
 //  ScriptAgentInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  Script-based installation for ACP agents
 //
@@ -13,7 +13,7 @@ actor ScriptAgentInstaller {
 
     private let shellLoader: ShellEnvironmentLoader
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "ScriptInstaller"
     )
 

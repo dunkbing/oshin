@@ -1,6 +1,6 @@
 //
 //  CodexSessionStore.swift
-//  agentmonitor
+//  oshin
 //
 //  Reads Codex session history from ~/.codex/sessions/
 //  Codex uses a different protocol than Claude (thread/* vs session/*)

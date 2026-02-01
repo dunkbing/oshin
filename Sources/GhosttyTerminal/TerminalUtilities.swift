@@ -1,6 +1,6 @@
 //
 //  TerminalUtilities.swift
-//  agentmonitor
+//  oshin
 //
 //  Utility types for terminal operations
 //

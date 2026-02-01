@@ -1,6 +1,6 @@
 //
 //  AgentFileSystemDelegate.swift
-//  agentmonitor
+//  oshin
 //
 //  Handles file system operations for agent sessions
 //
@@ -10,7 +10,7 @@ import os.log
 
 actor AgentFileSystemDelegate {
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "FileSystemDelegate"
     )
 

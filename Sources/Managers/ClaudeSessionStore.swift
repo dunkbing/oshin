@@ -1,6 +1,6 @@
 //
 //  ClaudeSessionStore.swift
-//  agentmonitor
+//  oshin
 //
 //  Reads Claude Code's session history from ~/.claude/projects/
 //

@@ -1,6 +1,6 @@
 //
 //  ACPCapabilities.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent Client Protocol - Capability Types
 //

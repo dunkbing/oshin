@@ -1,6 +1,6 @@
 //
 //  ACPProcessManager.swift
-//  agentmonitor
+//  oshin
 //
 //  Manages subprocess lifecycle, I/O pipes, and message serialization
 //
@@ -33,7 +33,7 @@ actor ACPProcessManager {
         self.encoder = encoder
         self.decoder = decoder
         self.logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "ACPProcessManager"
         )
     }
@@ -251,7 +251,7 @@ actor ACPProcessManager {
             if let text = String(data: data, encoding: .utf8) {
                 Task { @MainActor in
                     Logger(
-                        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+                        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
                         category: "ACPProcessManager"
                     ).warning("Agent stderr: \(text)")
                 }

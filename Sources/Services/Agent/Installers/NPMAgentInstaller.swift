@@ -1,6 +1,6 @@
 //
 //  NPMAgentInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  NPM package installation for ACP agents
 //

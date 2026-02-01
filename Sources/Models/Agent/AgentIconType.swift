@@ -1,6 +1,6 @@
 //
 //  AgentIconType.swift
-//  agentmonitor
+//  oshin
 //
 //  Icon type for agent display
 //

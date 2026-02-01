@@ -1,6 +1,6 @@
 //
 //  AgentMetadata.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent configuration metadata
 //

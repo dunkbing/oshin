@@ -1,6 +1,6 @@
 //
 //  AppDetector.swift
-//  agentmonitor
+//  oshin
 //
 //  Detects installed terminals and editors
 //

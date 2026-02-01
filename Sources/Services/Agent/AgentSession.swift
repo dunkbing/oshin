@@ -1,6 +1,6 @@
 //
 //  AgentSession.swift
-//  agentmonitor
+//  oshin
 //
 //  Observable session wrapper for ACP agent communication
 //
@@ -136,7 +136,7 @@ class AgentSession: ObservableObject {
     init(agentName: String) {
         self.agentName = agentName
         self.logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "AgentSession"
         )
     }

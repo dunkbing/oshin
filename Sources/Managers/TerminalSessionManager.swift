@@ -1,6 +1,6 @@
 //
 //  TerminalSessionManager.swift
-//  agentmonitor
+//  oshin
 //
 //  Manages terminal sessions and caches terminal instances
 //

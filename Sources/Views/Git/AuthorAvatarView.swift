@@ -1,6 +1,6 @@
 //
 //  GitLogView.swift
-//  agentmonitor
+//  oshin
 //
 //  Git commit history view
 //

@@ -1,6 +1,6 @@
 //
 //  GitSidebarView.swift
-//  agentmonitor
+//  oshin
 //
 //  Git sidebar with file list, commit section, and history
 //

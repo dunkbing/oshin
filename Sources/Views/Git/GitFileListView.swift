@@ -1,6 +1,6 @@
 //
 //  GitFileListView.swift
-//  agentmonitor
+//  oshin
 //
 //  File list with staging controls
 //

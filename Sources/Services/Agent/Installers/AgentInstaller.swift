@@ -1,6 +1,6 @@
 //
 //  AgentInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent installation manager coordinator for ACP agents
 //
@@ -73,13 +73,13 @@ actor AgentInstaller {
 
     private let baseInstallPath: String
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "AgentInstaller"
     )
 
     private init() {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        baseInstallPath = homeDir.appendingPathComponent(".agentmonitor/agents").path
+        baseInstallPath = homeDir.appendingPathComponent(".oshin/agents").path
     }
 
     // MARK: - Installation Status

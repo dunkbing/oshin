@@ -1,6 +1,6 @@
 //
 //  GitStatusView.swift
-//  agentmonitor
+//  oshin
 //
 //  Displays git status (additions/deletions/untracked)
 //

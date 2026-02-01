@@ -1,6 +1,6 @@
 //
 //  GitHubReleaseInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  GitHub release API integration for agent installation
 //
@@ -14,7 +14,7 @@ actor GitHubReleaseInstaller {
     private let urlSession: URLSession
     private let binaryInstaller: BinaryAgentInstaller
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "GitHubInstaller"
     )
 

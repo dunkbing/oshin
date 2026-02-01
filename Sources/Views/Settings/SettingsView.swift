@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  agentmonitor
+//  oshin
 //
 //  Settings window with agent configuration
 //
@@ -426,7 +426,7 @@ struct AgentDetailView: View {
     private func installAgent() {
         let agentId = metadata.id
         let logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "AgentDetailView"
         )
         logger.info("Install button clicked for agent: \(agentId)")
@@ -454,7 +454,7 @@ struct AgentDetailView: View {
     private func updateAgent() {
         let agentId = metadata.id
         let logger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+            subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
             category: "AgentDetailView"
         )
         logger.info("Update button clicked for agent: \(agentId)")

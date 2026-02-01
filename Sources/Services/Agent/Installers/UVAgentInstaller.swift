@@ -1,6 +1,6 @@
 //
 //  UVAgentInstaller.swift
-//  agentmonitor
+//  oshin
 //
 //  UV (Python) package installation for ACP agents
 //
@@ -13,7 +13,7 @@ actor UVAgentInstaller {
 
     private let shellLoader: ShellEnvironmentLoader
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "UVInstaller"
     )
 

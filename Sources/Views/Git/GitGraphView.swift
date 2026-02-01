@@ -1,6 +1,6 @@
 //
 //  GitGraphView.swift
-//  agentmonitor
+//  oshin
 //
 //  Git commit graph visualization
 //

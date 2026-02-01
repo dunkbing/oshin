@@ -1,6 +1,6 @@
 //
 //  GitStatus.swift
-//  agentmonitor
+//  oshin
 //
 //  Git status representation
 //

@@ -1,6 +1,6 @@
 //
 //  DiffView.swift
-//  agentmonitor
+//  oshin
 //
 //  SwiftUI-based diff viewer
 //

@@ -1,6 +1,6 @@
 //
 //  TerminalViewWrapper.swift
-//  agentmonitor
+//  oshin
 //
 //  SwiftUI wrapper for GhosttyTerminalView
 //

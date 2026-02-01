@@ -1,6 +1,6 @@
 //
 //  ConversationStore.swift
-//  agentmonitor
+//  oshin
 //
 //  Persistent storage for chat conversation history
 //
@@ -45,7 +45,7 @@ class ConversationStore: ObservableObject {
     static let shared = ConversationStore()
 
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "ConversationStore"
     )
 
@@ -56,7 +56,7 @@ class ConversationStore: ObservableObject {
     /// Base directory for storing conversations
     private var conversationsDirectory: URL {
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let bundleId = Bundle.main.bundleIdentifier ?? "com.agentmonitor"
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.oshin"
         return appSupport.appendingPathComponent(bundleId).appendingPathComponent("conversations")
     }
 

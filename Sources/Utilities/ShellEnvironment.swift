@@ -1,6 +1,6 @@
 //
 //  ShellEnvironment.swift
-//  agentmonitor
+//  oshin
 //
 //  User shell environment loading
 //
@@ -12,7 +12,7 @@ enum ShellEnvironment {
     nonisolated(unsafe) private static var cachedEnvironment: [String: String]?
     private static let cacheLock = NSLock()
     private static let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "ShellEnvironment"
     )
 
@@ -157,7 +157,7 @@ actor ShellEnvironmentLoader {
     static let shared = ShellEnvironmentLoader()
 
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor",
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin",
         category: "ShellEnvironmentLoader"
     )
 

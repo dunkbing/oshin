@@ -1,6 +1,6 @@
 //
 //  AgentRegistry.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent configuration registry
 //
@@ -34,7 +34,7 @@ class AgentRegistry: ObservableObject {
 
     static let managedAgentsBasePath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.agentmonitor/agents"
+        return "\(home)/.oshin/agents"
     }()
 
     private init() {

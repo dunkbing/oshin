@@ -1,6 +1,6 @@
 //
 //  ACPPermissionTypes.swift
-//  agentmonitor
+//  oshin
 //
 //  Agent Client Protocol - Permission Types
 //

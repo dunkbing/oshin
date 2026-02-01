@@ -1,6 +1,6 @@
 //
 //  ChatTabView.swift
-//  agentmonitor
+//  oshin
 //
 //  Chat interface for AI agents with ACP integration
 //

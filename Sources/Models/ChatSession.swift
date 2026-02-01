@@ -1,6 +1,6 @@
 //
 //  ChatSession.swift
-//  agentmonitor
+//  oshin
 //
 //  Chat session model with persistence support
 //

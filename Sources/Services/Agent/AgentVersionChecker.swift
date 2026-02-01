@@ -1,6 +1,6 @@
 //
 //  AgentVersionChecker.swift
-//  agentmonitor
+//  oshin
 //
 //  Service to check ACP agent versions and suggest updates
 //
@@ -22,13 +22,13 @@ actor AgentVersionChecker {
     private var lastCheckTime: [String: Date] = [:]
     private let cacheExpiration: TimeInterval = 3600  // 1 hour
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.agentmonitor", category: "AgentVersion")
+        subsystem: Bundle.main.bundleIdentifier ?? "com.oshin", category: "AgentVersion")
 
     private let baseInstallPath: String
 
     private init() {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        baseInstallPath = homeDir.appendingPathComponent(".agentmonitor/agents").path
+        baseInstallPath = homeDir.appendingPathComponent(".oshin/agents").path
     }
 
     /// Check if an agent's version is outdated
