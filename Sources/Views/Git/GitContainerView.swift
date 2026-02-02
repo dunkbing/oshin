@@ -671,6 +671,16 @@ struct RemoteRowView: View {
 
                 HStack(spacing: 4) {
                     Button {
+                        onEdit(remote.fetchURL, false)
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10))
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit fetch URL")
+
+                    Button {
                         onFetch()
                     } label: {
                         Image(systemName: "arrow.triangle.2.circlepath")
@@ -679,16 +689,6 @@ struct RemoteRowView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Fetch from remote")
-
-                    Button {
-                        onEdit(remote.fetchURL, false)
-                    } label: {
-                        Image(systemName: "link")
-                            .font(.system(size: 10))
-                            .frame(width: 18, height: 18)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Edit fetch URL")
                 }
                 .frame(width: 50)
             }
