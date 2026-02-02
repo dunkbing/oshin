@@ -103,7 +103,7 @@ struct CommitHeaderSection: View {
 
             // Author info
             HStack(spacing: 10) {
-                AuthorAvatarView(initial: commit.authorInitial, size: 28)
+                AuthorAvatarView(initial: commit.authorInitial, size: 28, email: commit.authorEmail)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
