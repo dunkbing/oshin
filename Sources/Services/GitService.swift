@@ -157,6 +157,40 @@ struct GitOperationError: Identifiable {
     }
 }
 
+// MARK: - Repository Cache
+
+/// Thread-safe static cache for SwiftGitX Repository instances
+private enum RepositoryCache {
+    private static var cache: [String: SwiftGitX.Repository] = [:]
+    private static let lock = NSLock()
+
+    static func get(for path: String) throws -> SwiftGitX.Repository {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let repo = cache[path] {
+            return repo
+        }
+
+        let url = URL(fileURLWithPath: path)
+        let repo = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+        cache[path] = repo
+        return repo
+    }
+
+    static func invalidate(path: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        cache.removeValue(forKey: path)
+    }
+
+    static func invalidateAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        cache.removeAll()
+    }
+}
+
 @MainActor
 class GitService: ObservableObject {
     @Published private(set) var currentStatus: GitStatus = .empty
@@ -182,7 +216,11 @@ class GitService: ObservableObject {
 
     func setRepositoryPath(_ path: String) {
         guard path != repositoryPath else { return }
+        let oldPath = repositoryPath
         repositoryPath = path
+        if !oldPath.isEmpty {
+            RepositoryCache.invalidate(path: oldPath)
+        }
         currentStatus = .empty
         selectedFileDiff = ""
         commitLog = []
@@ -229,8 +267,7 @@ class GitService: ObservableObject {
         let path = repositoryPath
         let branchName = selectedBranch
         return try await Task.detached(priority: .utility) {
-            let url = URL(fileURLWithPath: path)
-            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+            let repository = try RepositoryCache.get(for: path)
 
             let sequence: SwiftGitX.CommitSequence
             if let branchName = branchName {
@@ -279,8 +316,7 @@ class GitService: ObservableObject {
         let path = repositoryPath
         let branchName = selectedBranch
         return try await Task.detached(priority: .utility) {
-            let url = URL(fileURLWithPath: path)
-            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+            let repository = try RepositoryCache.get(for: path)
 
             // Get the starting commit for the branch (or HEAD for all)
             let sequence: SwiftGitX.CommitSequence
@@ -366,8 +402,7 @@ class GitService: ObservableObject {
     private func fetchCommitDetail(commitId: String, commitInfo: CommitInfo) async throws -> CommitDetail {
         let path = repositoryPath
         return try await Task.detached(priority: .utility) {
-            let url = URL(fileURLWithPath: path)
-            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+            let repository = try RepositoryCache.get(for: path)
 
             // Get the commit
             let oid = try SwiftGitX.OID(hex: commitId)
@@ -506,8 +541,7 @@ class GitService: ObservableObject {
     private func fetchBranches() async throws -> [BranchInfo] {
         let path = repositoryPath
         return try await Task.detached(priority: .utility) {
-            let url = URL(fileURLWithPath: path)
-            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+            let repository = try RepositoryCache.get(for: path)
 
             var branchInfos: [BranchInfo] = []
 
@@ -738,8 +772,7 @@ class GitService: ObservableObject {
                 if isDeleted {
                     try GitService.runGitCommand(["add", "--", file], in: path)
                 } else {
-                    let url = URL(fileURLWithPath: path)
-                    let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                    let repository = try RepositoryCache.get(for: path)
                     try repository.add(path: file)
                 }
             } catch {
@@ -769,8 +802,7 @@ class GitService: ObservableObject {
 
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 try repository.restore(.staged, paths: [file])
             } catch {
                 print("Failed to unstage file: \(error)")
@@ -789,8 +821,7 @@ class GitService: ObservableObject {
         Task { [weak self] in
             await Task.detached(priority: .userInitiated) {
                 do {
-                    let url = URL(fileURLWithPath: path)
-                    let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                    let repository = try RepositoryCache.get(for: path)
                     if !filesToAdd.isEmpty {
                         try repository.add(paths: filesToAdd)
                     }
@@ -817,8 +848,7 @@ class GitService: ObservableObject {
         let stagedFiles = currentStatus.stagedFiles
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 if !stagedFiles.isEmpty {
                     try repository.restore(.staged, paths: stagedFiles)
                 }
@@ -842,8 +872,7 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 try repository.commit(message: message)
             } catch {
                 print("Failed to commit: \(error)")
@@ -893,8 +922,7 @@ class GitService: ObservableObject {
             let operationError: GitOperationError?
 
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 try await repository.fetch()
                 operationError = nil
             } catch {
@@ -922,8 +950,7 @@ class GitService: ObservableObject {
             let operationError: GitOperationError?
 
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 try await repository.pull()
                 operationError = nil
             } catch {
@@ -950,8 +977,7 @@ class GitService: ObservableObject {
             let operationError: GitOperationError?
 
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
                 try await repository.push()
                 operationError = nil
             } catch {
@@ -975,8 +1001,7 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
 
                 // Try local branch first, then remote
                 let branch: SwiftGitX.Branch? =
@@ -1010,8 +1035,7 @@ class GitService: ObservableObject {
         let path = repositoryPath
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let url = URL(fileURLWithPath: path)
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
 
                 // Get the base branch
                 let base: SwiftGitX.Branch? =
@@ -1072,7 +1096,7 @@ class GitService: ObservableObject {
                     return output
                 }
 
-                let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+                let repository = try RepositoryCache.get(for: path)
 
                 // Get diff for this specific file
                 let diff = try repository.diff(to: [.workingTree, .index])
@@ -1116,8 +1140,7 @@ class GitService: ObservableObject {
 
     private func loadGitStatus(at path: String) async throws -> GitStatus {
         try await Task.detached(priority: .utility) {
-            let url = URL(fileURLWithPath: path)
-            let repository = try SwiftGitX.Repository(at: url, createIfNotExists: false)
+            let repository = try RepositoryCache.get(for: path)
 
             // Get status entries
             let statusEntries = try repository.status()
