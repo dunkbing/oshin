@@ -5,6 +5,7 @@
 //  Git operations service using SwiftGitX
 //
 
+import CoreServices
 import Foundation
 import SwiftGitX
 import SwiftUI
@@ -157,6 +158,83 @@ struct GitOperationError: Identifiable {
     }
 }
 
+// MARK: - File System Watcher
+
+/// Watches a directory recursively for file system changes using FSEvents
+final class FileSystemWatcher {
+    private var stream: FSEventStreamRef?
+    private var debounceWorkItem: DispatchWorkItem?
+    private let debounceInterval: TimeInterval
+    private let onChange: @Sendable () -> Void
+
+    init(debounceInterval: TimeInterval = 0.5, onChange: @escaping @Sendable () -> Void) {
+        self.debounceInterval = debounceInterval
+        self.onChange = onChange
+    }
+
+    deinit {
+        stop()
+    }
+
+    func watch(path: String) {
+        stop()
+
+        var context = FSEventStreamContext()
+        context.info = Unmanaged.passUnretained(self).toOpaque()
+
+        let paths = [path] as CFArray
+        let flags = UInt32(
+            kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer
+        )
+
+        guard
+            let stream = FSEventStreamCreate(
+                nil,
+                { _, info, _, _, _, _ in
+                    guard let info else { return }
+                    let watcher = Unmanaged<FileSystemWatcher>.fromOpaque(info).takeUnretainedValue()
+                    watcher.handleChange()
+                },
+                &context,
+                paths,
+                FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+                0.3,  // Latency in seconds
+                flags
+            )
+        else {
+            print("FileSystemWatcher: Failed to create FSEventStream")
+            return
+        }
+
+        self.stream = stream
+        FSEventStreamSetDispatchQueue(stream, DispatchQueue.global(qos: .utility))
+        FSEventStreamStart(stream)
+    }
+
+    func stop() {
+        debounceWorkItem?.cancel()
+        debounceWorkItem = nil
+
+        if let stream {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+        }
+        stream = nil
+    }
+
+    private func handleChange() {
+        debounceWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.onChange()
+        }
+        debounceWorkItem = workItem
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+    }
+}
+
 // MARK: - Repository Cache
 
 /// Thread-safe static cache for SwiftGitX Repository instances
@@ -211,8 +289,22 @@ class GitService: ObservableObject {
 
     private var repositoryPath: String = ""
     private let logPageSize = 50
+    private var fileWatcher: FileSystemWatcher?
 
     var repoPath: String { repositoryPath }
+
+    init() {
+        setupFileWatcher()
+    }
+
+    private func setupFileWatcher() {
+        fileWatcher = FileSystemWatcher(debounceInterval: 0.5) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, !self.isOperationPending else { return }
+                await self.reloadStatus()
+            }
+        }
+    }
 
     func setRepositoryPath(_ path: String) {
         guard path != repositoryPath else { return }
@@ -231,6 +323,10 @@ class GitService: ObservableObject {
         selectedBranch = nil
         branches = []
         remotes = []
+
+        // Start watching the new repository for file changes
+        fileWatcher?.watch(path: path)
+
         Task {
             await reloadStatus()
             await loadBranches()
