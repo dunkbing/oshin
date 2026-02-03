@@ -58,6 +58,7 @@ enum MessageRole: String, Sendable, Codable {
 
 enum SessionState: Sendable {
     case idle
+    case installing(String)  // Installing agent with progress message
     case initializing
     case ready
     case error(String)
@@ -69,6 +70,11 @@ enum SessionState: Sendable {
 
     var isInitializing: Bool {
         if case .initializing = self { return true }
+        return false
+    }
+
+    var isInstalling: Bool {
+        if case .installing = self { return true }
         return false
     }
 }
@@ -156,13 +162,48 @@ class AgentSession: ObservableObject {
         sessionState = .initializing
         self.workingDirectory = workingDirectory
 
-        guard let agentPath = AgentRegistry.shared.getAgentPath(for: agentName) else {
+        // Get agent metadata
+        guard let metadata = AgentRegistry.shared.getMetadata(for: agentName) else {
             sessionState = .error("Agent not found: \(agentName)")
             throw AgentSessionError.custom("Agent not found: \(agentName)")
         }
 
-        let metadata = AgentRegistry.shared.getMetadata(for: agentName)
-        let launchArgs = metadata?.launchArgs ?? []
+        // Check if agent is installed (executable exists and is runnable)
+        let isInstalled = await AgentInstaller.shared.isInstalled(agentName)
+
+        if !isInstalled {
+            // Try to auto-install the agent
+            guard metadata.installMethod != nil else {
+                sessionState = .error("Agent '\(metadata.name)' is not installed and has no installation method")
+                throw AgentSessionError.custom(
+                    "Agent '\(metadata.name)' is not installed and has no installation method")
+            }
+
+            logger.info("Agent '\(self.agentName)' not installed, starting auto-installation...")
+            sessionState = .installing("Installing \(metadata.name)...")
+            addSystemMessage("Installing \(metadata.name)...")
+
+            do {
+                try await AgentInstaller.shared.installAgent(metadata)
+                logger.info("Agent '\(self.agentName)' installed successfully")
+                addSystemMessage("\(metadata.name) installed successfully")
+            } catch {
+                let errorMsg = "Failed to install \(metadata.name): \(error.localizedDescription)"
+                sessionState = .error(errorMsg)
+                addSystemMessage(errorMsg)
+                throw AgentSessionError.custom(errorMsg)
+            }
+
+            sessionState = .initializing
+        }
+
+        // Get the (possibly updated) agent path after installation
+        guard let agentPath = AgentRegistry.shared.getAgentPath(for: agentName) else {
+            sessionState = .error("Agent path not found after installation: \(agentName)")
+            throw AgentSessionError.custom("Agent path not found after installation: \(agentName)")
+        }
+
+        let launchArgs = metadata.launchArgs
 
         let client = ACPClient()
         acpClient = client

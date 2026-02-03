@@ -115,6 +115,11 @@ struct ChatTabView: View {
                     .fill(.gray)
                     .frame(width: 8, height: 8)
                 Text("Idle")
+            case .installing(let message):
+                ProgressView()
+                    .scaleEffect(0.6)
+                Text(message)
+                    .lineLimit(1)
             case .initializing:
                 ProgressView()
                     .scaleEffect(0.6)
