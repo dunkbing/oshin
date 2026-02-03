@@ -16,8 +16,6 @@ import Layout from '../layouts/Layout.astro';
         <span>Oshin</span>
       </a>
       <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#workflow">How it works</a>
         <a href="https://github.com/dunkbing/oshin" target="_blank" class="nav-link-github">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -29,12 +27,7 @@ import Layout from '../layouts/Layout.astro';
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-glow"></div>
     <div class="hero-content">
-      <div class="badge">
-        <span class="badge-dot"></span>
-        macOS Native App
-      </div>
       <h1>
         Monitor your
         <span class="rotating-text-wrapper">
@@ -43,8 +36,7 @@ import Layout from '../layouts/Layout.astro';
         <br/>agents at work
       </h1>
       <p class="hero-desc">
-        A unified interface to watch AI coding agents work on your code.
-        Manage Git repositories, review changes, run terminals, and chat with agents — all in one place.
+        Watch AI coding agents work on your code. Manage Git, review changes, and chat with agents — all in one place.
       </p>
       <div class="hero-actions">
         <a href="#" class="btn btn-primary">
@@ -55,275 +47,103 @@ import Layout from '../layouts/Layout.astro';
           </svg>
           Download for macOS
         </a>
-        <a href="#features" class="btn btn-secondary">
-          Learn more
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow-icon">
-            <line x1="5" y1="12" x2="19" y2="12"/>
-            <polyline points="12 5 19 12 12 19"/>
-          </svg>
+        <a href="https://github.com/dunkbing/oshin" target="_blank" class="btn btn-secondary">
+          View on GitHub
         </a>
       </div>
-      <p class="hero-note">Requires macOS 14.0 or later</p>
+      <p class="hero-note">Free and open source · macOS 14.0+</p>
     </div>
 
     <!-- Screenshot -->
     <div class="screenshot-wrapper">
-      <div class="screenshot-container">
-        <div class="screenshot-placeholder">
-          <div class="screenshot-inner">
-            <div class="window-controls">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
-            </div>
-            <div class="screenshot-content">
-              <span>App Screenshot</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <img src="/sc1.webp" alt="Oshin app screenshot" class="screenshot" />
     </div>
   </section>
 
   <!-- Agent Logos -->
   <section class="agents-section">
-    <p class="agents-label">Works with your favorite AI coding agents</p>
+    <p class="agents-label">Works with</p>
     <div class="agents-logos">
-      <div class="agent-logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-        <span>Claude Code</span>
-      </div>
-      <div class="agent-logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="4" y="4" width="16" height="16" rx="2"/>
-          <path d="M9 9h6M9 12h6M9 15h4" stroke="var(--bg-primary)" stroke-width="1.5"/>
-        </svg>
-        <span>Codex</span>
-      </div>
-      <div class="agent-logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
-          <circle cx="12" cy="12" r="3" fill="var(--bg-primary)"/>
-        </svg>
-        <span>Gemini CLI</span>
-      </div>
+      <span class="agent-name">Claude Code</span>
+      <span class="divider">·</span>
+      <span class="agent-name">Codex</span>
+      <span class="divider">·</span>
+      <span class="agent-name">Gemini CLI</span>
+    </div>
+  </section>
+
+  <!-- Screenshots Gallery -->
+  <section class="gallery">
+    <div class="gallery-grid">
+      <img src="/sc2.webp" alt="Git integration" class="gallery-img" />
+      <img src="/sc3.webp" alt="Chat interface" class="gallery-img" />
+      <img src="/sc4.webp" alt="Terminal" class="gallery-img" />
     </div>
   </section>
 
   <!-- Features -->
   <section class="features" id="features">
-    <div class="section-header">
-      <span class="section-tag">Features</span>
-      <h2>Everything you need to work with AI agents</h2>
-      <p class="section-desc">Built for developers who want full visibility and control over their AI coding assistants.</p>
-    </div>
-
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-        </div>
         <h3>Multi-Agent Monitoring</h3>
-        <p>Watch multiple AI agents work simultaneously. See real-time status, progress, and actions as they happen.</p>
+        <p>Watch multiple AI agents work simultaneously with real-time status updates.</p>
       </div>
-
       <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </div>
         <h3>Git Integration</h3>
-        <p>Full Git client built-in. View diffs, stage changes, commit, and manage branches without leaving the app.</p>
+        <p>View diffs, stage changes, commit, and manage branches without leaving the app.</p>
       </div>
-
       <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="4 17 10 11 4 5"/>
-            <line x1="12" y1="19" x2="20" y2="19"/>
-          </svg>
-        </div>
         <h3>Integrated Terminal</h3>
-        <p>Powered by Ghostty. Run commands, view build output, and manage multiple terminal sessions per project.</p>
+        <p>Powered by Ghostty. Run commands and manage multiple sessions per project.</p>
       </div>
-
       <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-          </svg>
-        </div>
-        <h3>Diff Visualization</h3>
-        <p>Review agent modifications with unified and split diff views. See exactly what changed before committing.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
         <h3>Chat Interface</h3>
-        <p>Send instructions and guide agent work through direct communication. ACP protocol support built-in.</p>
+        <p>Send instructions and guide agent work through ACP protocol support.</p>
       </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
-        <h3>Workspace Organization</h3>
-        <p>Group repositories into workspaces. Switch contexts instantly and keep your projects organized.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Workflow -->
-  <section class="workflow" id="workflow">
-    <div class="section-header">
-      <span class="section-tag">Workflow</span>
-      <h2>Simple, powerful workflow</h2>
-      <p class="section-desc">From prompt to commit in three steps.</p>
-    </div>
-
-    <div class="workflow-steps">
-      <div class="workflow-step">
-        <div class="step-number">1</div>
-        <div class="step-content">
-          <h3>Select your repository</h3>
-          <p>Add your Git repositories to a workspace. Oshin tracks changes across all your projects.</p>
-        </div>
-      </div>
-
-      <div class="workflow-connector"></div>
-
-      <div class="workflow-step">
-        <div class="step-number">2</div>
-        <div class="step-content">
-          <h3>Work with your agent</h3>
-          <p>Chat with Claude, Codex, or Gemini. Watch them work in real-time through the monitoring interface.</p>
-        </div>
-      </div>
-
-      <div class="workflow-connector"></div>
-
-      <div class="workflow-step">
-        <div class="step-number">3</div>
-        <div class="step-content">
-          <h3>Review and commit</h3>
-          <p>See all changes in the diff viewer. Stage what you want, commit when ready, and push to remote.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Second Screenshot -->
-  <section class="showcase">
-    <div class="screenshot-container large">
-      <div class="screenshot-placeholder">
-        <div class="screenshot-inner">
-          <div class="window-controls">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-          </div>
-          <div class="screenshot-content">
-            <span>Git Diff View</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="cta">
-    <div class="cta-glow"></div>
-    <div class="cta-content">
-      <h2>Ready to take control?</h2>
-      <p>Download Oshin and see exactly what your AI agents are doing.</p>
-      <a href="#" class="btn btn-primary btn-large">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download for macOS
-      </a>
-      <p class="cta-note">Free and open source. Requires macOS 14.0+</p>
     </div>
   </section>
 
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">
-        <a href="/" class="logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="logo-icon">
-            <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
-            <circle cx="9" cy="12" r="2" fill="currentColor"/>
-            <circle cx="15" cy="12" r="2" fill="currentColor"/>
-            <path d="M9 16c0 0 1.5 2 3 2s3-2 3-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span>Oshin</span>
-        </a>
-        <p class="footer-tagline">Monitor AI coding agents on macOS</p>
-      </div>
+      <a href="/" class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="logo-icon">
+          <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
+          <circle cx="9" cy="12" r="2" fill="currentColor"/>
+          <circle cx="15" cy="12" r="2" fill="currentColor"/>
+          <path d="M9 16c0 0 1.5 2 3 2s3-2 3-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>Oshin</span>
+      </a>
       <div class="footer-links">
         <a href="https://github.com/dunkbing/oshin" target="_blank">GitHub</a>
-        <a href="#">Documentation</a>
-        <a href="#">Releases</a>
+        <a href="https://github.com/dunkbing/oshin/releases" target="_blank">Releases</a>
       </div>
-    </div>
-    <div class="footer-bottom">
-      <p>Built with SwiftUI and love.</p>
     </div>
   </footer>
 </Layout>
 
 <script>
-  // Rotating text animation
   const agents = ['Claude Code', 'Codex', 'Gemini CLI'];
   let currentIndex = 0;
   const rotatingText = document.getElementById('rotating-text');
 
   function rotateText() {
     if (!rotatingText) return;
-
     rotatingText.classList.add('fade-out');
-
     setTimeout(() => {
       currentIndex = (currentIndex + 1) % agents.length;
       rotatingText.textContent = agents[currentIndex];
       rotatingText.classList.remove('fade-out');
-      rotatingText.classList.add('fade-in');
-
-      setTimeout(() => {
-        rotatingText.classList.remove('fade-in');
-      }, 300);
     }, 300);
   }
 
-  // Check for reduced motion preference
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  if (!prefersReducedMotion) {
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     setInterval(rotateText, 2500);
   }
 </script>
 
 <style>
-  /* Navigation */
   .nav {
     position: fixed;
     top: 0;
@@ -338,13 +158,11 @@ import Layout from '../layouts/Layout.astro';
   }
 
   @media (prefers-color-scheme: light) {
-    .nav {
-      background: rgba(250, 250, 250, 0.8);
-    }
+    .nav { background: rgba(250, 250, 250, 0.8); }
   }
 
   .nav-inner {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
     display: flex;
     align-items: center;
@@ -356,106 +174,45 @@ import Layout from '../layouts/Layout.astro';
     align-items: center;
     gap: 0.5rem;
     font-weight: 600;
-    font-size: 1rem;
-    color: var(--text-primary);
-  }
-
-  .logo-icon {
-    color: var(--text-primary);
-  }
-
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .nav-links a {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    transition: color 0.2s;
-  }
-
-  .nav-links a:hover {
     color: var(--text-primary);
   }
 
   .nav-link-github {
     display: flex;
-    align-items: center;
     padding: 0.5rem;
     border-radius: 6px;
-    transition: background-color 0.2s;
+    color: var(--text-secondary);
+    transition: color 0.2s;
   }
 
   .nav-link-github:hover {
-    background: var(--bg-elevated);
+    color: var(--text-primary);
   }
 
-  /* Hero */
   .hero {
-    position: relative;
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 8rem 1rem 4rem;
+    padding: 7rem 1rem 4rem;
     text-align: center;
-    overflow: hidden;
-  }
-
-  .hero-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 600px;
-    background: var(--glow-bg);
-    pointer-events: none;
   }
 
   .hero-content {
-    position: relative;
-    max-width: 720px;
-    margin: 0 auto 4rem;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-  }
-
-  .badge-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--accent-green);
-    border-radius: 50%;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    max-width: 600px;
+    margin: 0 auto 3rem;
   }
 
   .hero h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-size: clamp(2rem, 5vw, 3rem);
     font-weight: 700;
-    line-height: 1.1;
-    margin-bottom: 1.5rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
 
   .rotating-text-wrapper {
     display: inline-block;
-    min-width: 280px;
+    min-width: 220px;
   }
 
   .rotating-text {
@@ -467,20 +224,16 @@ import Layout from '../layouts/Layout.astro';
     opacity: 0;
   }
 
-  .rotating-text.fade-in {
-    opacity: 1;
-  }
-
   .hero-desc {
-    font-size: 1.125rem;
-    line-height: 1.7;
+    font-size: 1.1rem;
+    line-height: 1.6;
     color: var(--text-secondary);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .hero-actions {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -491,12 +244,11 @@ import Layout from '../layouts/Layout.astro';
     color: var(--text-muted);
   }
 
-  /* Buttons */
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.875rem 1.5rem;
+    padding: 0.75rem 1.25rem;
     font-size: 0.9rem;
     font-weight: 500;
     border-radius: 8px;
@@ -510,7 +262,6 @@ import Layout from '../layouts/Layout.astro';
 
   .btn-primary:hover {
     opacity: 0.9;
-    transform: translateY(-1px);
   }
 
   .btn-secondary {
@@ -520,93 +271,29 @@ import Layout from '../layouts/Layout.astro';
   }
 
   .btn-secondary:hover {
-    background: var(--bg-card);
     border-color: var(--text-muted);
   }
 
-  .btn-secondary .arrow-icon {
-    transition: transform 0.2s;
-  }
-
-  .btn-secondary:hover .arrow-icon {
-    transform: translateX(4px);
-  }
-
-  .btn-large {
-    padding: 1rem 2rem;
-    font-size: 1rem;
-  }
-
-  /* Screenshot */
   .screenshot-wrapper {
-    position: relative;
-    max-width: 1000px;
+    max-width: 900px;
     margin: 0 auto;
   }
 
-  .screenshot-container {
-    position: relative;
+  .screenshot {
+    width: 100%;
     border-radius: 12px;
-    overflow: hidden;
-    box-shadow:
-      0 0 0 1px var(--border),
-      0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 1px var(--border), 0 20px 40px -12px rgba(0, 0, 0, 0.3);
   }
 
-  .screenshot-placeholder {
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-
-  .screenshot-inner {
-    aspect-ratio: 16/10;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .window-controls {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    background: var(--bg-elevated);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-  }
-
-  .dot.red { background: #ff5f57; }
-  .dot.yellow { background: #febc2e; }
-  .dot.green { background: #28c840; }
-
-  .screenshot-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
-
-  .screenshot-container.large {
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
-  /* Agents Section */
   .agents-section {
-    padding: 4rem 1rem;
+    padding: 3rem 1rem;
     text-align: center;
   }
 
   .agents-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    margin-bottom: 2rem;
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -614,256 +301,96 @@ import Layout from '../layouts/Layout.astro';
   .agents-logos {
     display: flex;
     justify-content: center;
-    gap: 4rem;
+    align-items: center;
+    gap: 1rem;
     flex-wrap: wrap;
   }
 
-  .agent-logo {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
+  .agent-name {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .divider {
     color: var(--text-muted);
-    transition: color 0.2s;
   }
 
-  .agent-logo:hover {
-    color: var(--text-secondary);
-  }
-
-  .agent-logo span {
-    font-size: 0.85rem;
-    font-weight: 500;
-  }
-
-  /* Features */
-  .features {
-    max-width: 1200px;
+  .gallery {
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 6rem 1rem;
+    padding: 0 1rem 4rem;
   }
 
-  .section-header {
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto 4rem;
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
   }
 
-  .section-tag {
-    display: inline-block;
-    padding: 0.375rem 0.75rem;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 1rem;
+  .gallery-img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--border);
+    transition: transform 0.2s;
   }
 
-  .section-header h2 {
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
+  .gallery-img:hover {
+    transform: scale(1.02);
   }
 
-  .section-desc {
-    font-size: 1.1rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
+  .features {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1rem 4rem;
   }
 
   .features-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
   }
 
   .feature-card {
-    padding: 2rem;
+    padding: 1.5rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    transition: all 0.2s;
-  }
-
-  .feature-card:hover {
-    background: var(--bg-card);
-    border-color: var(--text-muted);
-    transform: translateY(-2px);
-  }
-
-  .feature-icon {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
     border-radius: 10px;
-    margin-bottom: 1.25rem;
-    color: var(--text-primary);
   }
 
   .feature-card h3 {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
   }
 
   .feature-card p {
-    font-size: 0.9rem;
-    line-height: 1.6;
+    font-size: 0.85rem;
+    line-height: 1.5;
     color: var(--text-secondary);
   }
 
-  /* Workflow */
-  .workflow {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 6rem 1rem;
-  }
-
-  .workflow-steps {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .workflow-step {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    max-width: 280px;
-  }
-
-  .step-number {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent-blue);
-    border-radius: 50%;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 1.5rem;
-  }
-
-  .step-content h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-  }
-
-  .step-content p {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-  }
-
-  .workflow-connector {
-    flex: 0 0 60px;
-    height: 2px;
-    background: var(--border);
-    margin-top: 24px;
-  }
-
-  /* Showcase */
-  .showcase {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 1rem 6rem;
-  }
-
-  /* CTA */
-  .cta {
-    position: relative;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 6rem 1rem;
-    text-align: center;
-  }
-
-  .cta-glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    max-width: 600px;
-    height: 400px;
-    background: radial-gradient(ellipse at center, rgba(120, 119, 198, 0.1), transparent 70%);
-    pointer-events: none;
-  }
-
-  .cta-content {
-    position: relative;
-  }
-
-  .cta h2 {
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-  }
-
-  .cta p {
-    font-size: 1.1rem;
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-  }
-
-  .cta-note {
-    margin-top: 1rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  /* Footer */
   .footer {
     border-top: 1px solid var(--border);
-    padding: 3rem 1rem 2rem;
+    padding: 2rem 1rem;
   }
 
   .footer-inner {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .footer-brand .logo {
-    margin-bottom: 0.5rem;
-  }
-
-  .footer-tagline {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+    align-items: center;
   }
 
   .footer-links {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
   }
 
   .footer-links a {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     transition: color 0.2s;
   }
@@ -872,61 +399,23 @@ import Layout from '../layouts/Layout.astro';
     color: var(--text-primary);
   }
 
-  .footer-bottom {
-    max-width: 1200px;
-    margin: 2rem auto 0;
-    padding-top: 2rem;
-    border-top: 1px solid var(--border-subtle);
-    text-align: center;
-  }
+  @media (max-width: 768px) {
+    .gallery-grid {
+      grid-template-columns: 1fr;
+    }
 
-  .footer-bottom p {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  /* Responsive */
-  @media (max-width: 900px) {
     .features-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .workflow-steps {
-      flex-direction: column;
-      gap: 2rem;
-    }
-
-    .workflow-connector {
-      width: 2px;
-      height: 40px;
-      flex: 0 0 40px;
-      margin: 0;
-    }
-
-    .workflow-step {
-      max-width: 100%;
+      grid-template-columns: 1fr;
     }
   }
 
   @media (max-width: 640px) {
-    .nav {
-      padding: 0.75rem 1rem;
-    }
-
-    .nav-links a:not(.nav-link-github) {
-      display: none;
-    }
-
     .hero {
-      padding: 6rem 1rem 2rem;
-    }
-
-    .hero-content {
-      margin-bottom: 2rem;
+      padding: 5rem 1rem 2rem;
     }
 
     .hero h1 {
-      font-size: 1.75rem;
+      font-size: 1.5rem;
     }
 
     .rotating-text-wrapper {
@@ -934,13 +423,8 @@ import Layout from '../layouts/Layout.astro';
       display: block;
     }
 
-    .hero-desc {
-      font-size: 1rem;
-    }
-
     .hero-actions {
       flex-direction: column;
-      padding: 0 0.5rem;
     }
 
     .btn {
@@ -948,70 +432,14 @@ import Layout from '../layouts/Layout.astro';
       justify-content: center;
     }
 
-    .badge {
-      font-size: 0.75rem;
-      padding: 0.375rem 0.75rem;
-    }
-
-    .agents-section {
-      padding: 2rem 1rem;
-    }
-
     .agents-logos {
-      gap: 1.5rem;
-    }
-
-    .agent-logo svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .features {
-      padding: 3rem 1rem;
-    }
-
-    .features-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .feature-card {
-      padding: 1.5rem;
-    }
-
-    .section-header {
-      margin-bottom: 2rem;
-    }
-
-    .workflow {
-      padding: 3rem 1rem;
-    }
-
-    .showcase {
-      padding: 0 1rem 3rem;
-    }
-
-    .cta {
-      padding: 3rem 1rem;
-    }
-
-    .footer {
-      padding: 2rem 1rem 1.5rem;
+      gap: 0.5rem;
     }
 
     .footer-inner {
       flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .footer-links {
-      flex-wrap: wrap;
-      gap: 1rem 1.5rem;
-    }
-
-    .footer-bottom {
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
+      gap: 1rem;
+      text-align: center;
     }
   }
 </style>
